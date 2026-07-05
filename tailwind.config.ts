@@ -3,7 +3,8 @@ import tailwindcssAnimate from "tailwindcss-animate";
 import daisyui from "daisyui";
 import svgToDataUri from "mini-svg-data-uri";
 
-import { default: flattenColorPalette} from "tailwindcss/lib/util/flattenColorPalette";
+// @ts-expect-error - no types for this internal tailwind function
+import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
 
 const config: Config = {
   darkMode: "class",
