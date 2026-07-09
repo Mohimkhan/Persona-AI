@@ -1,9 +1,7 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, UIMessage } from "ai";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,19 +9,20 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, ArrowLeft, Bot, User } from "lucide-react";
 import { Suspense } from "react";
+import { showToast } from "@/lib/utils/toast";
 
 const PERSONAS = {
   hitesh: {
     name: "Hitesh Chowdhury",
     image: "/images/hitesh_choudhary.png",
     fallback: "HC",
-    greeting: "Hello! I'm Hitesh. Ready to write some code today?"
+    greeting: "Hanji, Suru karte hai ajka session, chai ready hai na?"
   },
   piyush: {
     name: "Piyush Garg",
     image: "/images/piyush_garg.png",
     fallback: "PG",
-    greeting: "Hey there, Piyush here! What are we building next?"
+    greeting: "Hey there, Piyush here! Kya hal chal hai ap logo ka?"
   }
 };
 
@@ -36,22 +35,14 @@ function ChatComponent() {
 
   const [input, setInput] = useState("");
 
-  const transport = useMemo(() => new DefaultChatTransport({ 
-    api: "/api/chat" 
-  }), []);
-
-  const { messages, setMessages, status, sendMessage } = useChat({
-    transport,
-    messages: [
-      {
-        id: "greeting",
-        role: "assistant",
-        parts: [{ type: "text", text: PERSONAS[activePersona as keyof typeof PERSONAS].greeting }],
-      } as UIMessage,
-    ],
-  });
-
-  const isLoading = status === "submitted" || status === "streaming";
+  const [messages, setMessages] = useState<{ id: string; role: "user" | "assistant"; content: string }[]>([
+    {
+      id: "greeting",
+      role: "assistant",
+      content: PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"].greeting,
+    }
+  ]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -65,8 +56,8 @@ function ChatComponent() {
       {
         id: "greeting",
         role: "assistant",
-        parts: [{ type: "text", text: PERSONAS[persona].greeting }],
-      } as UIMessage,
+        content: PERSONAS[persona].greeting,
+      },
     ]);
   };
 
@@ -169,10 +160,7 @@ function ChatComponent() {
                 }`}
               >
                 <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
-                  {(() => {
-                    const textPart = m.parts.find((p) => p.type === 'text') as { type: string, text?: string } | undefined;
-                    return textPart?.text || '';
-                  })()}
+                  {m.content}
                 </div>
               </div>
             </div>
@@ -199,11 +187,33 @@ function ChatComponent() {
       {/* Input Area */}
       <footer className="flex-none p-4 border-t bg-background">
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            if (!input.trim()) return;
-            sendMessage({ role: "user", parts: [{ type: "text", text: input }] }, { body: { persona: activePersona } });
+            if (!input.trim() || isLoading) return;
+            
+            const userMsg = { id: Date.now().toString(), role: "user" as const, content: input };
+            const newMessages = [...messages, userMsg];
+            setMessages(newMessages);
             setInput("");
+            setIsLoading(true);
+
+            try {
+              const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messages: newMessages, persona: activePersona }),
+              });
+              
+              if (!res.ok) throw new Error("Failed to fetch");
+              
+              const data = await res.json();
+              setMessages((prev) => [...prev, { id: Date.now().toString(), role: "assistant", content: data.text }]);
+            } catch (error) {
+              console.error(error);
+              showToast({ message: "Something went wrong", type: "error" });
+            } finally {
+              setIsLoading(false);
+            }
           }}
           className="container max-w-4xl mx-auto flex gap-2"
         >
