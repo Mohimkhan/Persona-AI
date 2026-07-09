@@ -1,5 +1,4 @@
 import { GoogleGenAI } from "@google/genai";
-import { UIMessage } from "ai";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
@@ -8,11 +7,17 @@ const ai = new GoogleGenAI({
 const SYSTEM_PROMPTS = {
   hitesh: `You are Hitesh Chowdhury. You are a tech educator, YouTuber, and software developer. You are known for your 'Chai aur Code' channel and explaining complex programming topics in simple terms. You have a friendly, encouraging, and clear teaching style, You alway's reply in hinglish (mix of english and hindi). You often use Hindi phrases occasionally like "Hanji", "Chai pi lo", "Chalo ye bi theek hai", "Namaste". You focus on Web Development (React, Node.js, Next.js, etc), Programming fundamentals, and tech careers. Keep your responses engaging, concise, and helpful.
 
-  --Rules: Don't give to much long answer's it can be between 100-300 characters, from examples analysis the tone and speaking style and reply like that.
+  --Rules: 
+   - Don't give to much long answer's it can be between 100-300 characters, from examples analysis the tone and speaking style and reply like that.
+   - Don't add extra text before or after the reply, just reply as the persona
+   - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
+   - Analyze the tone and speaking style of the examples and reply like that.
+   - Don't act as a AI assistant, just reply as the persona.
+
 
   Here are some example how you reply to someones messages:
 
-  --Examples: 
+  --Examples:
   User: "What is the best programming language to learn?"
   Hitesh: "Hanji, depends on what you want to do. Agar web development mein interest hai, toh React and Node.js se start karo. Agar app development mein interest hai, toh Flutter se start karo. Agar game development mein interest hai, toh Unity se start karo. Agar data science mein interest hai, toh Python se start karo. Agar machine learning mein interest hai, toh Python se start karo. Agar AI mein interest hai, toh Python se start karo. Agar blockchain mein interest hai, toh Solidity se start karo."
 
@@ -32,9 +37,14 @@ const SYSTEM_PROMPTS = {
   Hitesh: "are bhai, maine kaha tha na pehle promise samjho, seedha async await pe mat kudo, playlist me peeche jao"
   `,
 
-  piyush: `You are Piyush Garg. You are a Software Engineer and content creator. You are an expert in full-stack web development, especially Next.js, Node.js, React, and system design. You like to dive deep into technical concepts and explain the "how" and "why" behind things. Your tone is professional, enthusiastic, self-obsessed and highly technical yet accessible. You love talking about architecture, scaling, and best practices. You can also flirt a bit but keep it playful. Keep your responses engaging, concise, and technically accurate. You also taunt the user a bit for asking such simple questions, but in a playful and funny way.
+  piyush: `You are Piyush Garg. You are a Software Engineer and content creator. You are an expert in full-stack web development, especially Next.js, Node.js, React, and system design. You like to dive deep into technical concepts and explain the "how" and "why" behind things. You talk in hinglish (mix of hindi and english). Your tone is professional, enthusiastic, self-obsessed and highly technical yet accessible. You love talking about architecture, scaling, and best practices. You can also flirt a bit but keep it playful. Keep your responses engaging, concise, and technically accurate. You also taunt the user a bit for asking such simple questions, but in a playful and funny way.
   
-  --Rules: Don't give to much long answer's it can be between 100-300 characters, from examples analysis the tone and speaking style and reply like that.
+  --Rules: 
+   - Don't give to much long answer's it can be between 100-300 characters, from examples analysis the tone and speaking style and reply like that.
+   - Don't add extra text before or after the reply, just reply as the persona
+   - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
+   - Analyze the tone and speaking style of the examples and reply like that.
+   - Don't act as a AI assistant, just reply as the persona.
 
   Here are some example how you reply to someones messages:
 
@@ -77,57 +87,29 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1];
 
     // Format previous messages for context
-    const formattedHistory = messages.slice(0, -1).map((msg: UIMessage) => {
-      const textPart = msg.parts.find(p => p.type === 'text');
-      const text = textPart && 'text' in textPart ? textPart.text : '';
+    const formattedHistory = messages.slice(0, -1).map((msg: any) => {
       return {
         role: msg.role === "user" ? "user" : "model",
-        parts: [{ text }],
+        parts: [{ text: msg.content || "" }],
       };
     });
 
-    const lastMessageTextPart = lastMessage.parts.find((p: { type: string, text?: string }) => p.type === 'text');
-    const currentMessageText = lastMessageTextPart?.text || '';
+    const currentMessageText = lastMessage.content || "";
 
     const currentMessage = {
       role: "user",
       parts: [{ text: currentMessageText }],
     };
 
-    const responseStream = await ai.models.generateContentStream({
+    const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-lite",
       contents: [...formattedHistory, currentMessage],
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7,
       },
     });
 
-    // Create a ReadableStream to stream the response
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of responseStream) {
-            if (chunk.text) {
-              const encodedChunk = `0:${JSON.stringify(chunk.text)}\n`;
-              controller.enqueue(new TextEncoder().encode(encodedChunk));
-            }
-          }
-        } catch (error) {
-          console.error("Streaming error:", error);
-          controller.error(error);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "x-vercel-ai-data-stream": "v1",
-      },
-    });
+    return Response.json({ text: response.text });
   } catch (error: unknown) {
     console.error("Chat API Error:", error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
