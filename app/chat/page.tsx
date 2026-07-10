@@ -16,31 +16,34 @@ const PERSONAS = {
     name: "Hitesh Chowdhury",
     image: "/images/hitesh_choudhary.png",
     fallback: "HC",
-    greeting: "Hanji, Suru karte hai ajka session, chai ready hai na?"
+    greeting: "Hanji, Suru karte hai ajka session, chai ready hai na?",
   },
   piyush: {
     name: "Piyush Garg",
     image: "/images/piyush_garg.png",
     fallback: "PG",
-    greeting: "Hey there, Piyush here! Kya hal chal hai ap logo ka?"
-  }
+    greeting: "Hey there, Piyush here! Kya hal chal hai ap logo ka?",
+  },
 };
 
 function ChatComponent() {
   const searchParams = useSearchParams();
   const initialPersona = searchParams?.get("persona") || "hitesh";
   const [activePersona, setActivePersona] = useState<"hitesh" | "piyush">(
-    (initialPersona as "hitesh" | "piyush") || "hitesh"
+    (initialPersona as "hitesh" | "piyush") || "hitesh",
   );
 
   const [input, setInput] = useState("");
 
-  const [messages, setMessages] = useState<{ id: string; role: "user" | "assistant"; content: string }[]>([
+  const [messages, setMessages] = useState<
+    { id: string; role: "user" | "assistant"; content: string }[]
+  >([
     {
       id: "greeting",
       role: "assistant",
-      content: PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"].greeting,
-    }
+      content:
+        PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"].greeting,
+    },
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -75,7 +78,11 @@ function ChatComponent() {
           </Link>
           <div className="flex items-center gap-2">
             <Avatar>
-              <AvatarImage src={personaDetails.image} alt={personaDetails.name} className="object-cover" />
+              <AvatarImage
+                src={personaDetails.image}
+                alt={personaDetails.name}
+                className="object-cover"
+              />
               <AvatarFallback>{personaDetails.fallback}</AvatarFallback>
             </Avatar>
             <div>
@@ -141,15 +148,25 @@ function ChatComponent() {
               m.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            <div className={`flex gap-3 max-w-[85%] sm:max-w-[75%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+            <div
+              className={`flex gap-3 max-w-[85%] sm:max-w-[75%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+            >
               <Avatar className="w-8 h-8 sm:w-10 sm:h-10 shrink-0">
                 {m.role === "assistant" ? (
                   <>
-                    <AvatarImage src={personaDetails.image} alt={personaDetails.name} className="object-cover" />
-                    <AvatarFallback><Bot className="h-5 w-5"/></AvatarFallback>
+                    <AvatarImage
+                      src={personaDetails.image}
+                      alt={personaDetails.name}
+                      className="object-cover"
+                    />
+                    <AvatarFallback>
+                      <Bot className="h-5 w-5" />
+                    </AvatarFallback>
                   </>
                 ) : (
-                  <AvatarFallback className="bg-primary text-primary-foreground"><User className="h-5 w-5"/></AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    <User className="h-5 w-5" />
+                  </AvatarFallback>
                 )}
               </Avatar>
               <div
@@ -170,8 +187,14 @@ function ChatComponent() {
           <div className="flex w-full justify-start">
             <div className="flex gap-3 max-w-[85%] flex-row">
               <Avatar className="w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-                <AvatarImage src={personaDetails.image} alt={personaDetails.name} className="object-cover" />
-                <AvatarFallback><Bot className="h-5 w-5"/></AvatarFallback>
+                <AvatarImage
+                  src={personaDetails.image}
+                  alt={personaDetails.name}
+                  className="object-cover"
+                />
+                <AvatarFallback>
+                  <Bot className="h-5 w-5" />
+                </AvatarFallback>
               </Avatar>
               <div className="rounded-2xl px-4 py-3 bg-muted text-foreground rounded-tl-sm flex items-center gap-1">
                 <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce"></div>
@@ -190,8 +213,12 @@ function ChatComponent() {
           onSubmit={async (e) => {
             e.preventDefault();
             if (!input.trim() || isLoading) return;
-            
-            const userMsg = { id: Date.now().toString(), role: "user" as const, content: input };
+
+            const userMsg = {
+              id: Date.now().toString(),
+              role: "user" as const,
+              content: input,
+            };
             const newMessages = [...messages, userMsg];
             setMessages(newMessages);
             setInput("");
@@ -201,13 +228,23 @@ function ChatComponent() {
               const res = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ messages: newMessages, persona: activePersona }),
+                body: JSON.stringify({
+                  messages: newMessages,
+                  persona: activePersona,
+                }),
               });
-              
+
               if (!res.ok) throw new Error("Failed to fetch");
-              
+
               const data = await res.json();
-              setMessages((prev) => [...prev, { id: Date.now().toString(), role: "assistant", content: data.text }]);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: Date.now().toString(),
+                  role: "assistant",
+                  content: data.text,
+                },
+              ]);
             } catch (error) {
               console.error(error);
               showToast({ message: "Something went wrong", type: "error" });
@@ -220,7 +257,7 @@ function ChatComponent() {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`Message ${personaDetails.name.split(' ')[0]}...`}
+            placeholder={`Message ${personaDetails.name.split(" ")[0]}...`}
             className="flex-1 rounded-full px-6"
             disabled={isLoading}
           />
@@ -241,7 +278,13 @@ function ChatComponent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-screen">
+          Loading...
+        </div>
+      }
+    >
       <ChatComponent />
     </Suspense>
   );
