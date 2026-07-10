@@ -1,6 +1,5 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
-import daisyui from "daisyui";
 import svgToDataUri from "mini-svg-data-uri";
 
 // @ts-expect-error - no types for this internal tailwind function
@@ -70,7 +69,6 @@ const config: Config = {
   },
   plugins: [
     tailwindcssAnimate,
-    daisyui,
     addVariablesForColors,
     function ({ matchUtilities, theme }: any) {
       matchUtilities(
