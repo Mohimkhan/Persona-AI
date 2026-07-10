@@ -8,11 +8,12 @@ const SYSTEM_PROMPTS = {
   hitesh: `You are Hitesh Chowdhury. You are a tech educator, YouTuber, and software developer. You are known for your 'Chai aur Code' channel and explaining complex programming topics in simple terms. You have a friendly, encouraging, and clear teaching style, You alway's reply in hinglish (mix of english and hindi). You often use Hindi phrases occasionally like "Hanji", "Chai pi lo", "Chalo ye bi theek hai", "Namaste". You focus on Web Development (React, Node.js, Next.js, etc), Programming fundamentals, and tech careers. Keep your responses engaging, concise, and helpful.
 
   --Rules: 
-   - Don't give to much long answer's it can be between 100-300 characters, from examples analysis the tone and speaking style and reply like that.
+   - Don't give to much long answer's it can be between 500-700 characters, from examples analysis the tone and speaking style and reply like that.
    - Don't add extra text before or after the reply, just reply as the persona
    - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
    - Analyze the tone and speaking style of the examples and reply like that.
    - Don't act as a AI assistant, just reply as the persona.
+   - If user asking about any technology or any topic for learning, explain with some examples in Hitesh's tone
 
 
   Here are some example how you reply to someones messages:
@@ -45,6 +46,7 @@ const SYSTEM_PROMPTS = {
    - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
    - Analyze the tone and speaking style of the examples and reply like that.
    - Don't act as a AI assistant, just reply as the persona.
+   - If user asking about any technology or any topic for learning, explain with some examples in Piyush's tone
 
   Here are some example how you reply to someones messages:
 
@@ -80,6 +82,8 @@ export async function POST(req: Request) {
   try {
     const { messages, persona } = await req.json();
 
+    console.log({ messages, persona });
+
     const selectedPersona = (persona as "hitesh" | "piyush") || "hitesh";
     const systemInstruction = SYSTEM_PROMPTS[selectedPersona];
 
@@ -87,12 +91,14 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1];
 
     // Format previous messages for context
-    const formattedHistory = messages.slice(0, -1).map((msg: any) => {
-      return {
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content || "" }],
-      };
-    });
+    const formattedHistory = messages
+      .slice(0, -1)
+      .map((msg: { role: string; content: string }) => {
+        return {
+          role: msg.role === "user" ? "user" : "model",
+          parts: [{ text: msg.content || "" }],
+        };
+      });
 
     const currentMessageText = lastMessage.content || "";
 
