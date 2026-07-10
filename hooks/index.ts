@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useContext, ReactNode } from "react";
 import { AuthContext } from "../contexts";
 import { createPortal } from "react-dom";
@@ -8,7 +10,7 @@ interface PortalProps {
 
 export const useLocalStorage = <T>(
   key: string = "value",
-  initialValue: T = [] as T
+  initialValue: T = [] as T,
 ) => {
   // utility to check if a value can be parsed as JSON
   const isJsonParsable = (value: string): boolean => {
@@ -20,7 +22,7 @@ export const useLocalStorage = <T>(
     }
   };
   // check if it client or not
-  const isClient: boolean = typeof window === "undefined";
+  const isClient: boolean = typeof window !== "undefined";
   // retrieve the stored value from localStorage
   const storedValue = isClient ? localStorage.getItem(key) : null;
   // initialize the state with the stored value or the initial value
@@ -29,7 +31,7 @@ export const useLocalStorage = <T>(
       ? isJsonParsable(storedValue)
         ? JSON.parse(storedValue)
         : storedValue
-      : initialValue
+      : initialValue,
   );
 
   // update the localStorage whenever the value changes
@@ -37,7 +39,7 @@ export const useLocalStorage = <T>(
     if (isClient) {
       localStorage.setItem(
         key,
-        typeof value === "object" ? JSON.stringify(value) : value
+        typeof value === "object" ? JSON.stringify(value) : value,
       );
     }
   }, [key, value, isClient]);
@@ -71,11 +73,12 @@ export const useDebounce = <T>(value: T, delay: number = 500): T => {
 };
 
 export const usePortal = (domNode?: HTMLElement | null) => {
-  const portalRoot = domNode || document.getElementById("portal-root") as HTMLElement;
+  const portalRoot =
+    domNode || (document.getElementById("portal-root") as HTMLElement);
 
   if (!portalRoot) {
     throw new Error(
-      "Portal root element not found. Ensure it exists in your HTML."
+      "Portal root element not found. Ensure it exists in your HTML.",
     );
   }
 
