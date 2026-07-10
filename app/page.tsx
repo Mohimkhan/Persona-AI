@@ -1,7 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,28 +9,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Footer from "@/components/common/Footer";
+import Header from "@/components/common/Header";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
     <>
       <div className="min-h-[calc(100dvh-40px)] bg-background">
-        <header className="container mx-auto px-4 py-4 flex items-center justify-between border-b">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-              PA
-            </div>
-            <h1 className="text-sm md:text-xl font-bold text-foreground">
-              Persona AI
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/chat">
-              <Button variant="default">Chat Now</Button>
-            </Link>
-            <ThemeSwitcher />
-          </div>
-        </header>
-
+        <Header />
         <main className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center">
           <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">
             Converse with your <span className="text-primary">Idols</span>
