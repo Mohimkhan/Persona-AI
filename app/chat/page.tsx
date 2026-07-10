@@ -10,6 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, ArrowLeft, Bot, User } from "lucide-react";
 import { Suspense } from "react";
 import { showToast } from "@/lib/utils/toast";
+import { useLocalStorage } from "@/hooks";
+
+interface message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
 const PERSONAS = {
   hitesh: {
@@ -35,9 +42,7 @@ function ChatComponent() {
 
   const [input, setInput] = useState("");
 
-  const [messages, setMessages] = useState<
-    { id: string; role: "user" | "assistant"; content: string }[]
-  >([
+  const [localMessages, setLocalMessages] = useLocalStorage("chatMessages", [
     {
       id: "greeting",
       role: "assistant",
@@ -45,17 +50,18 @@ function ChatComponent() {
         PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"].greeting,
     },
   ]);
+
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [localMessages]);
 
   const handlePersonaSwitch = (persona: "hitesh" | "piyush") => {
     setActivePersona(persona);
-    setMessages([
+    setLocalMessages([
       {
         id: "greeting",
         role: "assistant",
@@ -141,7 +147,7 @@ function ChatComponent() {
 
       {/* Chat Messages */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {messages.map((m) => (
+        {localMessages.map((m: message) => (
           <div
             key={m.id}
             className={`flex w-full ${
@@ -219,8 +225,9 @@ function ChatComponent() {
               role: "user" as const,
               content: input,
             };
-            const newMessages = [...messages, userMsg];
-            setMessages(newMessages);
+
+            const newMessages = [...localMessages, userMsg];
+            setLocalMessages(newMessages);
             setInput("");
             setIsLoading(true);
 
@@ -237,7 +244,7 @@ function ChatComponent() {
               if (!res.ok) throw new Error("Failed to fetch");
 
               const data = await res.json();
-              setMessages((prev) => [
+              setLocalMessages((prev: message[]) => [
                 ...prev,
                 {
                   id: Date.now().toString(),
