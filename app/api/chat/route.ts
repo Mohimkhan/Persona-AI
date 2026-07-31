@@ -1,7 +1,28 @@
-import { GoogleGenAI } from "@google/genai";
+import { getYoutubeVideos as getYoutubeLatestVideos } from "@/app/actions/yt";
+import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
+import { z } from "zod";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
+});
+
+const videoSchema = z.object({
+  title: z.string().describe("The title of the video"),
+  description: z.string().describe("The description of the video"),
+  thumbnail: z.string().describe("The thumbnail of the video"),
+  fallbackThumbnail: z.string().describe("The fallback thumbnail of the video"),
+  referenceLink: z.string().describe("The reference link of the video"),
+  videoId: z.string().describe("The video ID of the video"),
+});
+
+const chatSchema = z.object({
+  text: z.string().describe("The response from the persona"),
+  data: z
+    .array(videoSchema)
+    .optional()
+    .describe(
+      "Array of youtube video info, it contains title, description, thumbnail, fallbackThumbnail, referenceLink, videoId",
+    ),
 });
 
 const SYSTEM_PROMPTS = {
@@ -13,7 +34,11 @@ const SYSTEM_PROMPTS = {
    - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
    - Analyze the tone and speaking style of the examples and reply like that.
    - Don't act as a AI assistant, just reply as the persona.
+<<<<<<< HEAD
    - If user asking about any technology or any topic for learning, explain with some examples in Hitesh's tone
+=======
+   - Follow the provided schema strictly, no matter how many times you are being called return provided schema only
+>>>>>>> c2cb0b7 (feat: render text message or if tool call is made then text with tool response)
 
 
   Here are some example how you reply to someones messages:
@@ -47,6 +72,8 @@ const SYSTEM_PROMPTS = {
    - Analyze the tone and speaking style of the examples and reply like that.
    - Don't act as a AI assistant, just reply as the persona.
    - If user asking about any technology or any topic for learning, explain with some examples in Piyush's tone
+   - Follow the provided schema strictly, no matter how many times you are being called return provided schema only
+
 
   Here are some example how you reply to someones messages:
 
@@ -78,6 +105,71 @@ const SYSTEM_PROMPTS = {
   `,
 };
 
+const getYoutubeVideos: FunctionDeclaration = {
+  name: "getYoutubeVideos",
+  description: "Get the youtube videos for the given query",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      role: {
+        type: Type.STRING,
+        enum: ["hitesh chowdhary", "piyush garg"],
+        description: "The role to search for in youtube videos",
+      },
+      query: {
+        type: Type.STRING,
+        description: "The query to search for in youtube videos",
+      },
+    },
+    required: ["role", "query"],
+  },
+};
+
+const JSON_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    text: {
+      type: Type.STRING,
+      description: "The response from the persona",
+    },
+    data: {
+      type: Type.ARRAY,
+      description:
+        "Array of youtube video info, it contains title, description, thumbnail, fallbackThumbnail, referenceLink, videoId",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: {
+            type: Type.STRING,
+            description: "The title of the video",
+          },
+          description: {
+            type: Type.STRING,
+            description: "The description of the video",
+          },
+          thumbnail: {
+            type: Type.STRING,
+            description: "The thumbnail of the video",
+          },
+          fallbackThumbnail: {
+            type: Type.STRING,
+            description: "The fallback thumbnail of the video",
+          },
+          referenceLink: {
+            type: Type.STRING,
+            description: "The reference link of the video",
+          },
+          videoId: {
+            type: Type.STRING,
+            description: "The video ID of the video",
+          },
+        },
+      },
+    },
+  },
+  required: ["text"],
+};
+
 export async function POST(req: Request) {
   try {
     const { messages, persona } = await req.json();
@@ -107,15 +199,107 @@ export async function POST(req: Request) {
       parts: [{ text: currentMessageText }],
     };
 
-    const response = await ai.models.generateContent({
+    const contents = [...formattedHistory, currentMessage];
+
+    let response = await ai.models.generateContent({
       model: "gemini-2.5-flash-lite",
-      contents: [...formattedHistory, currentMessage],
+      contents: contents,
       config: {
         systemInstruction: systemInstruction,
+        tools: [{ functionDeclarations: [getYoutubeVideos] }],
       },
     });
 
-    return Response.json({ text: response.text });
+    console.log("response with tool ", JSON.stringify(response.candidates));
+
+    const candidate = response?.candidates?.[0];
+    const functionCalls = candidate?.content?.parts?.filter(
+      (p) => p.functionCall,
+    );
+
+    console.log(
+      "last candidate, functionCall",
+      JSON.stringify(candidate),
+      JSON.stringify(functionCalls),
+    );
+    // If Gemini wants to call a tool:
+
+    if (functionCalls && functionCalls.length > 0) {
+      console.log("Found Func Calls", functionCalls.length);
+
+      for (const part of functionCalls) {
+        const fnName = part.functionCall?.name;
+        const args = part.functionCall?.args as {
+          role: "hitesh chowdhary" | "piyush garg";
+          query: string;
+        };
+        const id = part.functionCall?.id;
+
+        switch (fnName) {
+          case "getYoutubeVideos":
+            {
+              const result = await getYoutubeLatestVideos(args);
+
+              // Append model's tool request AND tool execution result to conversation history
+              contents.push({
+                role: "model",
+                parts: candidate?.content?.parts || [],
+              });
+
+              contents.push({
+                role: "tool",
+                parts: [
+                  {
+                    functionResponse: {
+                      name: fnName,
+                      response: { videos: result },
+                      id: id || "",
+                    },
+                  },
+                ],
+              });
+            }
+            break;
+          default: {
+            return Response.json({});
+          }
+        }
+      }
+    } else {
+      // If no function call was made, append model's raw text response
+      contents.push({
+        role: "model",
+        parts: candidate?.content?.parts || [],
+      });
+    }
+
+    console.log("contents ", JSON.stringify(contents));
+
+    // STEP 2: Final call WITH responseMimeType & responseSchema to enforce strict JSON structure
+    const finalJsonResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: contents,
+      config: {
+        systemInstruction: systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: JSON_RESPONSE_SCHEMA,
+      },
+    });
+
+    if (!finalJsonResponse?.text) {
+      throw new Error("Empty response from AI during JSON generation");
+    }
+
+    console.log("Final Result ", JSON.stringify(finalJsonResponse));
+
+    const parsedJson = JSON.parse(finalJsonResponse.text);
+    const finalResponse = chatSchema.safeParse(parsedJson);
+
+    console.log("Final Result 2nd ", { parsedJson, finalResponse });
+
+    if (finalResponse.success) {
+      return Response.json({ ...parsedJson });
+    }
   } catch (error: unknown) {
     console.error("Chat API Error:", error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
