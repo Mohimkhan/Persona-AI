@@ -154,11 +154,11 @@ function ChatComponent() {
           <div
             key={m.id}
             className={`flex w-full ${
-              m.role === "user" ? "justify-end" : "justify-start"
+              m.role === "user" ? "justify-end" : "justify-start max-w-4xl"
             }`}
           >
             <div
-              className={`flex gap-3 max-w-[85%] sm:max-w-[75%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+              className={`flex gap-3 w-full ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}
             >
               <Avatar className="w-8 h-8 sm:w-10 sm:h-10 shrink-0">
                 {m.role === "assistant" ? (
@@ -190,7 +190,7 @@ function ChatComponent() {
                 </div>
 
                 {m?.data && m.data.length > 0 && (
-                  <div className="flex flex-wrap mt-3 gap-3">
+                  <div className="flex justify-between align-baseline flex-wrap mt-3 gap-3 pr-5">
                     {m.data.map((video, index) => (
                       <a
                         key={index}
@@ -212,7 +212,7 @@ function ChatComponent() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium line-clamp-2 mb-1">
+                          <h4 title={video?.title ?? ""} className="text-sm font-medium line-clamp-2 mb-1 whitespace-nowrap max-w-40 text-ellipsis">
                             {video.title}
                           </h4>
                           <p className="text-xs text-muted-foreground line-clamp-2">
