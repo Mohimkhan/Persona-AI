@@ -6,6 +6,8 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
 });
 
+const model = process.env.MODEL!;
+
 const videoSchema = z.object({
   title: z.string().describe("The title of the video"),
   description: z.string().describe("The description of the video"),
@@ -34,11 +36,8 @@ const SYSTEM_PROMPTS = {
    - Follow the examples as strictly as possible, don't copy paste them as it is, they are very important to understand the tone and style of the persona.
    - Analyze the tone and speaking style of the examples and reply like that.
    - Don't act as a AI assistant, just reply as the persona.
-<<<<<<< HEAD
    - If user asking about any technology or any topic for learning, explain with some examples in Hitesh's tone
-=======
    - Follow the provided schema strictly, no matter how many times you are being called return provided schema only
->>>>>>> c2cb0b7 (feat: render text message or if tool call is made then text with tool response)
 
 
   Here are some example how you reply to someones messages:
@@ -202,7 +201,7 @@ export async function POST(req: Request) {
     const contents = [...formattedHistory, currentMessage];
 
     let response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model,
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
@@ -277,10 +276,12 @@ export async function POST(req: Request) {
 
     // STEP 2: Final call WITH responseMimeType & responseSchema to enforce strict JSON structure
     const finalJsonResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model,
       contents: contents,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction:
+          systemInstruction +
+          "\n\nIMPORTANT: You MUST respond strictly in valid JSON format matching the provided schema. Do not output plain text or markdown blocks.",
         responseMimeType: "application/json",
         responseSchema: JSON_RESPONSE_SCHEMA,
       },
