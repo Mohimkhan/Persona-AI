@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ["youtube-search-without-api-key"],
+  },
   images: {
     remotePatterns: [
       {
