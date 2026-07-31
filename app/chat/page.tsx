@@ -11,11 +11,14 @@ import { Send, ArrowLeft, Bot, User } from "lucide-react";
 import { Suspense } from "react";
 import { showToast } from "@/lib/utils/toast";
 import { useLocalStorage } from "@/hooks";
+import { type YouTubeVideo } from "../actions/yt";
+import Image from "next/image";
 
-interface message {
+interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  data?: YouTubeVideo[];
 }
 
 const PERSONAS = {
@@ -147,7 +150,7 @@ function ChatComponent() {
 
       {/* Chat Messages */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {localMessages.map((m: message) => (
+        {localMessages.map((m: Message) => (
           <div
             key={m.id}
             className={`flex w-full ${
@@ -185,6 +188,41 @@ function ChatComponent() {
                 <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
                   {m.content}
                 </div>
+
+                {m?.data && m.data.length > 0 && (
+                  <div className="flex flex-wrap mt-3 gap-3">
+                    {m.data.map((video, index) => (
+                      <a
+                        key={index}
+                        href={video.referenceLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 py-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors"
+                      >
+                        <div className="relative shrink-0 w-24 h-16 rounded-md overflow-hidden">
+                          <Image
+                            src={video.thumbnail || video.fallbackThumbnail}
+                            alt={video.title}
+                            fill
+                            className="object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                video.fallbackThumbnail;
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium line-clamp-2 mb-1">
+                            {video.title}
+                          </h4>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {video.description}
+                          </p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -244,12 +282,13 @@ function ChatComponent() {
               if (!res.ok) throw new Error("Failed to fetch");
 
               const data = await res.json();
-              setLocalMessages((prev: message[]) => [
+              setLocalMessages((prev: Message[]) => [
                 ...prev,
                 {
                   id: Date.now().toString(),
                   role: "assistant",
                   content: data.text,
+                  data: data?.data ? (data?.data as YouTubeVideo[]) : [],
                 },
               ]);
             } catch (error) {
