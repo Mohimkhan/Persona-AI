@@ -173,7 +173,7 @@ export async function POST(req: Request) {
   try {
     const { messages, persona } = await req.json();
 
-    console.log({ messages, persona });
+    // console.log({ messages, persona });
 
     const selectedPersona = (persona as "hitesh" | "piyush") || "hitesh";
     const systemInstruction = SYSTEM_PROMPTS[selectedPersona];
@@ -209,22 +209,22 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("response with tool ", JSON.stringify(response.candidates));
+    // console.log("response with tool ", JSON.stringify(response.candidates));
 
     const candidate = response?.candidates?.[0];
     const functionCalls = candidate?.content?.parts?.filter(
       (p) => p.functionCall,
     );
 
-    console.log(
-      "last candidate, functionCall",
-      JSON.stringify(candidate),
-      JSON.stringify(functionCalls),
-    );
+    // console.log(
+    //   "last candidate, functionCall",
+    //   JSON.stringify(candidate),
+    //   JSON.stringify(functionCalls),
+    // );
     // If Gemini wants to call a tool:
 
     if (functionCalls && functionCalls.length > 0) {
-      console.log("Found Func Calls", functionCalls.length);
+      // console.log("Found Func Calls", functionCalls.length);
 
       for (const part of functionCalls) {
         const fnName = part.functionCall?.name;
@@ -272,7 +272,7 @@ export async function POST(req: Request) {
       });
     }
 
-    console.log("contents ", JSON.stringify(contents));
+    // console.log("contents ", JSON.stringify(contents));
 
     // STEP 2: Final call WITH responseMimeType & responseSchema to enforce strict JSON structure
     const finalJsonResponse = await ai.models.generateContent({
@@ -291,15 +291,15 @@ export async function POST(req: Request) {
       throw new Error("Empty response from AI during JSON generation");
     }
 
-    console.log("Final Result ", JSON.stringify(finalJsonResponse));
+    // console.log("Final Result ", JSON.stringify(finalJsonResponse));
 
     const parsedJson = JSON.parse(finalJsonResponse.text);
     const finalResponse = chatSchema.safeParse(parsedJson);
 
-    console.log("Final Result 2nd ", { parsedJson, finalResponse });
+    // console.log("Final Result 2nd ", { parsedJson, finalResponse });
 
     if (finalResponse.success) {
-      return Response.json({ ...parsedJson });
+      return Response.json({ ...finalResponse.data });
     }
   } catch (error: unknown) {
     console.error("Chat API Error:", error);
