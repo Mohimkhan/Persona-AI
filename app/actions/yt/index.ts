@@ -1,6 +1,7 @@
 "use server";
 
 export interface YouTubeVideo {
+  id: string | {videoId?: string};
   title: string;
   description: string;
   thumbnail: string;
@@ -25,21 +26,26 @@ export async function findYouTubeVideos(
     }
 
     // Map through the array to build a clean, consistent data schema
-    const formattedVideos = results.map((video: any) => {
-      const videoId = video.id?.videoId || video.id;
+    const formattedVideos = results.map(
+      (video): YouTubeVideo => {
+        const videoId = (
+          video.id instanceof Object ? video.id?.videoId : video.id
+        ) as string;
 
-      return {
-        title: video.title,
-        description: "No description provided",
-        // Max resolution thumbnail direct layout from YouTube's static CDN
-        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        fallbackThumbnail:
-          video.snippet?.thumbnails?.high?.url ||
-          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-        referenceLink: `https://www.youtube.com/watch?v=${videoId}`,
-        videoId: videoId,
-      };
-    });
+        return {
+          id: video.id as string | { videoId?: string },
+          title: video.title as string,
+          description: "No description provided",
+          // Max resolution thumbnail direct layout from YouTube's static CDN
+          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          fallbackThumbnail:
+            video.snippet?.thumbnails?.high?.url ||
+            `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          referenceLink: `https://www.youtube.com/watch?v=${videoId}`,
+          videoId: videoId,
+        };
+      }
+    );
 
     return formattedVideos;
   } catch (error) {

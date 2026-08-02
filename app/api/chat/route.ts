@@ -200,7 +200,7 @@ export async function POST(req: Request) {
 
     const contents = [...formattedHistory, currentMessage];
 
-    let response = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model,
       contents: contents,
       config: {
