@@ -55,14 +55,12 @@ export async function findYouTubeVideos(
 }
 
 export async function getYoutubeVideos({
-  role,
   query,
 }: {
-  role: "hitesh chowdhary" | "piyush garg";
   query: string;
 }) {
   try {
-    const finalQuery = `${role} ${query}`;
+    const finalQuery = query;
     const searchResults = await findYouTubeVideos(finalQuery);
 
     const response = searchResults.slice(0, 8);
