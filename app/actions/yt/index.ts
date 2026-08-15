@@ -1,7 +1,7 @@
 "use server";
 
 export interface YouTubeVideo {
-  id: string | {videoId?: string};
+  id: string | { videoId?: string };
   title: string;
   description: string;
   thumbnail: string;
@@ -26,26 +26,24 @@ export async function findYouTubeVideos(
     }
 
     // Map through the array to build a clean, consistent data schema
-    const formattedVideos = results.map(
-      (video): YouTubeVideo => {
-        const videoId = (
-          video.id instanceof Object ? video.id?.videoId : video.id
-        ) as string;
+    const formattedVideos = results.map((video): YouTubeVideo => {
+      const videoId = (
+        video.id instanceof Object ? video.id?.videoId : video.id
+      ) as string;
 
-        return {
-          id: video.id as string | { videoId?: string },
-          title: video.title as string,
-          description: "No description provided",
-          // Max resolution thumbnail direct layout from YouTube's static CDN
-          thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-          fallbackThumbnail:
-            video.snippet?.thumbnails?.high?.url ||
-            `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          referenceLink: `https://www.youtube.com/watch?v=${videoId}`,
-          videoId: videoId,
-        };
-      }
-    );
+      return {
+        id: video.id as string | { videoId?: string },
+        title: video.title as string,
+        description: "No description provided",
+        // Max resolution thumbnail direct layout from YouTube's static CDN
+        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        fallbackThumbnail:
+          video.snippet?.thumbnails?.high?.url ||
+          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        referenceLink: `https://www.youtube.com/watch?v=${videoId}`,
+        videoId: videoId,
+      };
+    });
 
     return formattedVideos;
   } catch (error) {
@@ -67,7 +65,7 @@ export async function getYoutubeVideos({
     const finalQuery = `${role} ${query}`;
     const searchResults = await findYouTubeVideos(finalQuery);
 
-    const response = searchResults.slice(0, 2);
+    const response = searchResults.slice(0, 8);
 
     console.log("youtube videos ", JSON.stringify(response, null, 2));
 
