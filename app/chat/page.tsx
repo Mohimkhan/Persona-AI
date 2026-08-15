@@ -14,6 +14,10 @@ import { useLocalStorage } from "@/hooks";
 import { type YouTubeVideo } from "../actions/yt";
 import Image from "next/image";
 
+/**
+ * TODO: When I switch persona for a sec old persona 1 data showed up in persona 2, but fixed when reload, I thing it will be solved if we set localstorage for both persona
+ */
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -68,16 +72,40 @@ function ChatComponent() {
 
   const handlePersonaSwitch = (persona: "hitesh" | "piyush") => {
     setActivePersona(persona);
-    setLocalMessages([
-      {
-        id: "greeting",
-        role: "assistant",
-        content: PERSONAS[persona].greeting,
-      },
-    ]);
   };
 
   const personaDetails = PERSONAS[activePersona];
+
+  useEffect(() => {
+    const hiteshLocal = localStorage.getItem(`chatMessages:hitesh`);
+    const piyushLocal = localStorage.getItem(`chatMessages:piyush`);
+
+    if (!hiteshLocal) {
+      localStorage.setItem(
+        `chatMessages:hitesh`,
+        JSON.stringify([
+          {
+            id: "greeting",
+            role: "assistant",
+            content: PERSONAS["hitesh"].greeting,
+          },
+        ]),
+      );
+    }
+
+    if (!piyushLocal) {
+      localStorage.setItem(
+        `chatMessages:piyush`,
+        JSON.stringify([
+          {
+            id: "greeting",
+            role: "assistant",
+            content: PERSONAS["piyush"].greeting,
+          },
+        ]),
+      );
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-background">
