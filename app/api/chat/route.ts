@@ -226,6 +226,14 @@ export async function POST(req: Request) {
     if (functionCalls && functionCalls.length > 0) {
       // console.log("Found Func Calls", functionCalls.length);
 
+      // Append model's tool request ONCE, containing all parallel function calls
+      contents.push({
+        role: "model",
+        parts: candidate?.content?.parts || [],
+      });
+
+      const toolResponseParts = [];
+
       for (const part of functionCalls) {
         const fnName = part.functionCall?.name;
         const args = part.functionCall?.args as {
@@ -239,23 +247,13 @@ export async function POST(req: Request) {
             {
               const result = await getYoutubeLatestVideos(args);
 
-              // Append model's tool request AND tool execution result to conversation history
-              contents.push({
-                role: "model",
-                parts: candidate?.content?.parts || [],
-              });
-
-              contents.push({
-                role: "tool",
-                parts: [
-                  {
-                    functionResponse: {
-                      name: fnName,
-                      response: { videos: result },
-                      id: id || "",
-                    },
-                  },
-                ],
+              // Aggregate tool execution result
+              toolResponseParts.push({
+                functionResponse: {
+                  name: fnName,
+                  response: { videos: result },
+                  id: id || "",
+                },
               });
             }
             break;
@@ -264,6 +262,12 @@ export async function POST(req: Request) {
           }
         }
       }
+
+      // Append all tool execution results as a single tool turn
+      contents.push({
+        role: "tool",
+        parts: toolResponseParts,
+      });
     } else {
       // If no function call was made, append model's raw text response
       contents.push({
@@ -296,11 +300,20 @@ export async function POST(req: Request) {
     const parsedJson = JSON.parse(finalJsonResponse.text);
     const finalResponse = chatSchema.safeParse(parsedJson);
 
-    // console.log("Final Result 2nd ", { parsedJson, finalResponse });
+    // console.log(
+    //   "Final Result 2nd ",
+    //   JSON.stringify(parsedJson),
+    //   JSON.stringify(finalResponse),
+    // );
 
     if (finalResponse.success) {
       return Response.json({ ...finalResponse.data });
     }
+
+    return Response.json(
+      { error: "Failed to parse AI response correctly" },
+      { status: 500 },
+    );
   } catch (error: unknown) {
     console.error("Chat API Error:", error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
