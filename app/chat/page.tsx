@@ -26,25 +26,25 @@ interface Message {
 }
 
 const PERSONAS = {
-  hitesh: {
-    name: "Hitesh Chowdhury",
-    image: "/images/hitesh_choudhary.png",
-    fallback: "HC",
-    greeting: "Hanji, Suru karte hai ajka session, chai ready hai na?",
+  angry_gf: {
+    name: "Angry Girlfriend",
+    image: "/images/angry_gf.png",
+    fallback: "AGF",
+    greeting: "Oh, so you finally have time to talk to me? Who were you texting just now?",
   },
-  piyush: {
-    name: "Piyush Garg",
-    image: "/images/piyush_garg.png",
-    fallback: "PG",
-    greeting: "Hey there, Piyush here! Kya hal chal hai ap logo ka?",
+  tech_bro: {
+    name: "Analogy Tech Bro",
+    image: "/images/tech_bro.png",
+    fallback: "ATB",
+    greeting: "Yo! Ready to build something scalable? Or do you need me to explain Docker using a tupperware analogy again?",
   },
 };
 
 function ChatComponent() {
   const searchParams = useSearchParams();
-  const initialPersona = searchParams?.get("persona") || "hitesh";
-  const [activePersona, setActivePersona] = useState<"hitesh" | "piyush">(
-    (initialPersona as "hitesh" | "piyush") || "hitesh",
+  const initialPersona = searchParams?.get("persona") || "tech_bro";
+  const [activePersona, setActivePersona] = useState<"angry_gf" | "tech_bro">(
+    (initialPersona as "angry_gf" | "tech_bro") || "tech_bro",
   );
 
   const [input, setInput] = useState("");
@@ -56,7 +56,7 @@ function ChatComponent() {
         id: "greeting",
         role: "assistant",
         content:
-          PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"]
+          PERSONAS[(initialPersona as "angry_gf" | "tech_bro") || "tech_bro"]
             .greeting,
       },
     ],
@@ -70,37 +70,37 @@ function ChatComponent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMessages]);
 
-  const handlePersonaSwitch = (persona: "hitesh" | "piyush") => {
+  const handlePersonaSwitch = (persona: "angry_gf" | "tech_bro") => {
     setActivePersona(persona);
   };
 
   const personaDetails = PERSONAS[activePersona];
 
   useEffect(() => {
-    const hiteshLocal = localStorage.getItem(`chatMessages:hitesh`);
-    const piyushLocal = localStorage.getItem(`chatMessages:piyush`);
+    const gfLocal = localStorage.getItem(`chatMessages:angry_gf`);
+    const broLocal = localStorage.getItem(`chatMessages:tech_bro`);
 
-    if (!hiteshLocal) {
+    if (!gfLocal) {
       localStorage.setItem(
-        `chatMessages:hitesh`,
+        `chatMessages:angry_gf`,
         JSON.stringify([
           {
             id: "greeting",
             role: "assistant",
-            content: PERSONAS["hitesh"].greeting,
+            content: PERSONAS["angry_gf"].greeting,
           },
         ]),
       );
     }
 
-    if (!piyushLocal) {
+    if (!broLocal) {
       localStorage.setItem(
-        `chatMessages:piyush`,
+        `chatMessages:tech_bro`,
         JSON.stringify([
           {
             id: "greeting",
             role: "assistant",
-            content: PERSONAS["piyush"].greeting,
+            content: PERSONAS["tech_bro"].greeting,
           },
         ]),
       );
@@ -138,22 +138,40 @@ function ChatComponent() {
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex rounded-lg border p-1 bg-muted/50">
             <Button
-              variant={activePersona === "hitesh" ? "default" : "ghost"}
+              variant={activePersona === "tech_bro" ? "default" : "ghost"}
               size="sm"
-              onClick={() => handlePersonaSwitch("hitesh")}
+              onClick={() => handlePersonaSwitch("tech_bro")}
               className="text-xs h-8"
             >
-              Hitesh
+              Tech Bro
             </Button>
             <Button
-              variant={activePersona === "piyush" ? "default" : "ghost"}
+              variant={activePersona === "angry_gf" ? "default" : "ghost"}
               size="sm"
-              onClick={() => handlePersonaSwitch("piyush")}
+              onClick={() => handlePersonaSwitch("angry_gf")}
               className="text-xs h-8"
             >
-              Piyush
+              Angry GF
             </Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (window.confirm("Are you sure you want to clear this chat?")) {
+                setLocalMessages([
+                  {
+                    id: "greeting",
+                    role: "assistant",
+                    content: PERSONAS[activePersona].greeting,
+                  },
+                ]);
+              }
+            }}
+            className="hidden sm:flex text-xs h-8 text-destructive border-destructive hover:bg-destructive/10"
+          >
+            Clear Chat
+          </Button>
           <ThemeSwitcher />
         </div>
       </header>
@@ -162,20 +180,20 @@ function ChatComponent() {
       <div className="sm:hidden p-2 border-b flex justify-center bg-muted/20">
         <div className="flex rounded-lg border p-1 bg-muted/50 w-full max-w-xs">
           <Button
-            variant={activePersona === "hitesh" ? "default" : "ghost"}
+            variant={activePersona === "tech_bro" ? "default" : "ghost"}
             size="sm"
-            onClick={() => handlePersonaSwitch("hitesh")}
+            onClick={() => handlePersonaSwitch("tech_bro")}
             className="text-xs h-8 flex-1"
           >
-            Hitesh
+            Tech Bro
           </Button>
           <Button
-            variant={activePersona === "piyush" ? "default" : "ghost"}
+            variant={activePersona === "angry_gf" ? "default" : "ghost"}
             size="sm"
-            onClick={() => handlePersonaSwitch("piyush")}
+            onClick={() => handlePersonaSwitch("angry_gf")}
             className="text-xs h-8 flex-1"
           >
-            Piyush
+            Angry GF
           </Button>
         </div>
       </div>
