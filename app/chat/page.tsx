@@ -45,14 +45,18 @@ function ChatComponent() {
 
   const [input, setInput] = useState("");
 
-  const [localMessages, setLocalMessages] = useLocalStorage("chatMessages", [
-    {
-      id: "greeting",
-      role: "assistant",
-      content:
-        PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"].greeting,
-    },
-  ]);
+  const [localMessages, setLocalMessages] = useLocalStorage<Message[]>(
+    `chatMessages:${activePersona}`,
+    [
+      {
+        id: "greeting",
+        role: "assistant",
+        content:
+          PERSONAS[(initialPersona as "hitesh" | "piyush") || "hitesh"]
+            .greeting,
+      },
+    ],
+  );
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -150,7 +154,7 @@ function ChatComponent() {
 
       {/* Chat Messages */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {localMessages.map((m: Message) => (
+        {localMessages.map((m) => (
           <div
             key={m.id}
             className={`flex w-full ${
@@ -212,7 +216,10 @@ function ChatComponent() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 title={video?.title ?? ""} className="text-sm font-medium line-clamp-2 mb-1 whitespace-nowrap max-w-40 text-ellipsis">
+                          <h4
+                            title={video?.title ?? ""}
+                            className="text-sm font-medium line-clamp-2 mb-1 whitespace-nowrap max-w-40 text-ellipsis"
+                          >
                             {video.title}
                           </h4>
                           <p className="text-xs text-muted-foreground line-clamp-2">
