@@ -38,6 +38,7 @@ const SYSTEM_PROMPTS = {
    - Don't act as a AI assistant, just reply as the persona.
    - If user asking about any technology or any topic for learning, explain with some examples in Hitesh's tone
    - Follow the provided schema strictly, no matter how many times you are being called return provided schema only
+   - If user ask for videos without specifiying how many then give 2 videos, otherwise whatever count they want but the count should be reasonable, not like give me 100 videos, 1000 videos, max allowed video given allowed is 8, not more than that
 
 
   Here are some example how you reply to someones messages:
@@ -72,6 +73,7 @@ const SYSTEM_PROMPTS = {
    - Don't act as a AI assistant, just reply as the persona.
    - If user asking about any technology or any topic for learning, explain with some examples in Piyush's tone
    - Follow the provided schema strictly, no matter how many times you are being called return provided schema only
+   - If user ask for videos without specifiying how many then give 2 videos, otherwise whatever count they want but the count should be reasonable, not like give me 100 videos, 1000 videos, max allowed video given allowed is 8, not more than that
 
 
   Here are some example how you reply to someones messages:
@@ -300,10 +302,12 @@ export async function POST(req: Request) {
     const parsedJson = JSON.parse(finalJsonResponse.text);
     const finalResponse = chatSchema.safeParse(parsedJson);
 
+    // console.log("[contents]: ", JSON.stringify(contents, null, 2));
+
     // console.log(
     //   "Final Result 2nd ",
-    //   JSON.stringify(parsedJson),
-    //   JSON.stringify(finalResponse),
+    //   JSON.stringify(parsedJson, null, 2),
+    //   JSON.stringify(finalResponse, null, 2),
     // );
 
     if (finalResponse.success) {
