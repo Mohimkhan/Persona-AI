@@ -10,46 +10,70 @@ interface PortalProps {
 
 export const useLocalStorage = <T>(
   key: string = "value",
-  initialValue: T = [] as T,
+  initialValue: T = [] as unknown as T,
 ) => {
-  // utility to check if a value can be parsed as JSON
-  const isJsonParsable = (value: string): boolean => {
-    try {
-      JSON.parse(value);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  // check if it client or not
-  const isClient: boolean = typeof window !== "undefined";
-  // retrieve the stored value from localStorage
-  const storedValue = isClient ? localStorage.getItem(key) : null;
-  // initialize the state with the stored value or the initial value
-  const [value, setValue] = useState(
-    storedValue !== null
-      ? isJsonParsable(storedValue)
-        ? JSON.parse(storedValue)
-        : storedValue
-      : initialValue,
-  );
+  const [value, setValue] = useState<T>(initialValue);
 
-  // update the localStorage whenever the value changes
+  // 1. Hydration & Cross-Tab Synchronization
   useEffect(() => {
-    if (isClient) {
-      localStorage.setItem(
+    if (typeof window === "undefined") return;
+
+    // A. Read or Initialize on mount
+    const storedValue = window.localStorage.getItem(key);
+    if (storedValue !== null) {
+      try {
+        setValue(JSON.parse(storedValue));
+      } catch {
+        setValue(storedValue as unknown as T);
+      }
+    } else {
+      window.localStorage.setItem(
         key,
-        typeof value === "object" ? JSON.stringify(value) : value,
+        typeof initialValue === "object"
+          ? JSON.stringify(initialValue)
+          : String(initialValue),
       );
     }
-  }, [key, value, isClient]);
 
-  // function to update the value in localStorage and state
-  const updateValue = <T>(newValue: T) => {
-    setValue(newValue);
+    // B. Listen for changes across other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === key && e.newValue !== null) {
+        try {
+          setValue(JSON.parse(e.newValue));
+        } catch {
+          setValue(e.newValue as unknown as T);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [key]);
+
+  // 2. Updater function
+  const updateValue = (newValue: T | ((val: T) => T)) => {
+    try {
+      // `newValue` can be a single value or a function and we should accept both
+      setValue((prevValue) => {
+        const valueToStore = newValue instanceof Function ? newValue(prevValue) : newValue;
+
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            key,
+            typeof valueToStore === "object"
+              ? JSON.stringify(valueToStore)
+              : String(valueToStore),
+          );
+        }
+
+        return valueToStore;
+      });
+    } catch (error) {
+      console.error(`Error setting localStorage key "${key}":`, error);
+    }
   };
 
-  return [value, updateValue];
+  return [value, updateValue] as const;
 };
 
 export const useAuth = () => {
