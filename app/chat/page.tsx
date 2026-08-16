@@ -13,9 +13,17 @@ import { showToast } from "@/lib/utils/toast";
 import { useLocalStorage } from "@/hooks";
 import { type YouTubeVideo } from "../actions/yt";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import remarkGfm from "remark-gfm";
 
 /**
- * TODO: When I switch persona for a sec old persona 1 data showed up in persona 2, but fixed when reload, I thing it will be solved if we set localstorage for both persona
+ * TODO: Make every chat card size fized to a minimum size when content is greater than that then introduce see more button unless see less
+ * TODO: Scroll to bottom button
+ * TODO: Copy button on code snippet
+ * TODO: Implement alert dialog for clear chat button
+ *
  */
 
 interface Message {
@@ -30,15 +38,20 @@ const PERSONAS = {
     name: "Angry Girlfriend",
     image: "/images/angry_gf.png",
     fallback: "AGF",
-    greeting: "Oh, so you finally have time to talk to me? Who were you texting just now?",
+    greeting:
+      "Oh, so you finally have time to talk to me? Who were you texting just now?",
   },
   tech_bro: {
     name: "Analogy Tech Bro",
     image: "/images/tech_bro.png",
     fallback: "ATB",
-    greeting: "Yo! Ready to build something scalable? Or do you need me to explain Docker using a tupperware analogy again?",
+    greeting:
+      "Yo! Ready to build something scalable? Or do you need me to explain Docker using a tupperware analogy again?",
   },
 };
+
+const markdown =
+  "Bro, **Docker** hocche code er jonno shipping container er moto. Age manush jahaje jemon temon kore jinish patato, ekhon shob standard container e jay. Docker apps er jonno same kaj kore—build once, run anywhere! Ekta app ar tar shob dependencies (libraries, settings, etc.) ekta container e package kora hoy, tai seta jekono machine e chalano jay jekhane Docker install kora ache. No more \"it works on my machine\" excuses! 😉\n\n**Analogy**: Imagine you have a delicious biryani recipe. To share it perfectly, you don't just send the ingredients. You cook it, put it in a nice, sealed tiffin box with all the necessary cutlery and instructions. Dockerfile is the recipe and instructions, and the Docker image is the cooked biryani in the tiffin box. Anyone with a fork (Docker installed) can open the box and enjoy the biryani (run the app).\n\n**Example: Simple Web Server**\n\nLet's containerize a super basic Python web server using Flask.\n\n**1. Project Structure:**\n\n```\nmy-flask-app/\n├── app.py\n└── Dockerfile\n```\n\n**2. `app.py` (Your Python Flask App):**\n\n~~~python\nfrom flask import Flask\napp = Flask(__name__)\n\n@app.route('/')\ndef hello_world():\n    return 'Hello from Dockerized Flask App! 🚀'\n\nif __name__ == '__main__':\n    app.run(debug=True, host='0.0.0.0')\n~~~\n\n**3. `Dockerfile` (The Blueprint):**\n\n~~~dockerfile\n# Use an official Python runtime as a parent image\nFROM python:3.9-slim\n\n# Set the working directory in the container\nWORKDIR /app\n\n# Copy the current directory contents into the container at /app\nCOPY . /app\n\n# Install any needed packages specified in requirements.txt\n# If you don't have a requirements.txt, you can install Flask directly\n# RUN pip install --no-cache-dir -r requirements.txt\nRUN pip install Flask\n\n# Make port 5000 available to the world outside this container\nEXPOSE 5000\n\n# Define environment variable\nENV NAME World\n\n# Run app.py when the container launches\nCMD [\"python\", \"app.py\"]\n~~~\n\n**Explanation of Dockerfile:**\n\n*   `FROM python:3.9-slim`: Starts with a lightweight official Python image.\n*   `WORKDIR /app`: Sets the default directory inside the container.\n*   `COPY . /app`: Copies your app files from your local machine into the container's `/app` directory.\n*   `RUN pip install Flask`: Installs the Flask library.\n*   `EXPOSE 5000`: Informs Docker that the container listens on port 5000 at runtime.\n*   `CMD [\"python\", \"app.py\"]`: Specifies the command to run when the container starts.\n\n**Steps to Build and Run:**\n\n1.  **Navigate to your project directory** in the terminal:\n    ~~~\nbash\ncd my-flask-app\n~~~\n2.  **Build the Docker image**: Give it a name, like `my-flask-app`.\n    ~~~\ndocker build -t my-flask-app .\n~~~\n3.  **Run the Docker container**: Map port 5000 on your machine to port 5000 in the container.\n    ~~~\ndocker run -p 5000:5000 my-flask-app\n~~~\n4.  Now, open your web browser and go to `http://localhost:5000`. You should see \"Hello from Dockerized Flask App! 🚀\". Boom! Scalable deployment achieved.\n\n**Recommended Videos for Deeper Dive:**\n\n1.  **Docker Tutorial for Beginners (Full Course)** by freeCodeCamp.org: This is a comprehensive course that covers all the basics and more.\n    *   Link: ~~~https://www.youtube.com/watch?v=3c-i7WX7M_o~~~\n2.  **What is Docker?** by Mosh Hamedani: A concise and clear explanation, perfect for understanding the core concepts.\n    *   Link: ~~~https://www.youtube.com/watch?v=gAkw7_218Xk~~~\n\nThese resources should give you a solid understanding and practical skills. Let me know if you want to explore more complex scenarios, like multi-container apps with Docker Compose!";
 
 function ChatComponent() {
   const searchParams = useSearchParams();
@@ -235,8 +248,58 @@ function ChatComponent() {
                     : "bg-muted text-foreground rounded-tl-sm"
                 }`}
               >
-                <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
-                  {m.content}
+                <div className="text-sm sm:text-base leading-relaxed overflow-hidden [&>p]:mb-2 [&>p:last-child]:mb-0">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code(props) {
+                        const { children, className, node, ref, ...rest } =
+                          props;
+                        const match = /language-(\w+)/.exec(className || "");
+                        return match ? (
+                          <SyntaxHighlighter
+                            {...rest}
+                            PreTag="div"
+                            children={String(children).replace(/\n$/, "")}
+                            language={match[1]}
+                            style={atomDark}
+                            className="rounded-md my-2 !text-sm"
+                          />
+                        ) : (
+                          <code
+                            {...rest}
+                            ref={ref}
+                            className="bg-foreground/10 px-1 py-0.5 rounded font-mono text-sm"
+                          >
+                            {children}
+                          </code>
+                        );
+                      },
+                      a(props) {
+                        return (
+                          <a
+                            {...props}
+                            className="text-blue-500 hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        );
+                      },
+                      ul(props) {
+                        return (
+                          <ul {...props} className="list-disc pl-5 mb-2" />
+                        );
+                      },
+                      ol(props) {
+                        return (
+                          <ol {...props} className="list-decimal pl-5 mb-2" />
+                        );
+                      },
+                    }}
+                  >
+                    {String(m.content)}
+                    {/* {markdown} */}
+                  </ReactMarkdown>
                 </div>
 
                 {m?.data && m.data.length > 0 && (
@@ -251,13 +314,14 @@ function ChatComponent() {
                       >
                         <div className="relative shrink-0 w-24 h-16 rounded-md overflow-hidden">
                           <Image
-                            src={video.thumbnail || video.fallbackThumbnail}
+                            src={video.thumbnail || video.fallbackThumbnail || "/images/video-fallback.svg"}
                             alt={video.title}
-                            fill
+                            fill 
+                            unoptimized
                             className="object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src =
-                                video.fallbackThumbnail;
+                                "/images/video-fallback.svg";
                             }}
                           />
                         </div>
