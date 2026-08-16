@@ -303,37 +303,33 @@ function ChatComponent() {
                 </div>
 
                 {m?.data && m.data.length > 0 && (
-                  <div className="flex justify-between align-baseline flex-wrap mt-3 gap-3 pr-5">
+                  <div className="flex flex-wrap mt-3 gap-3 pr-5">
                     {m.data.map((video, index) => (
                       <a
                         key={index}
                         href={video.referenceLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-start gap-3 py-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors"
+                        className="relative block flex-auto basis-[200px] max-w-full aspect-video rounded-xl overflow-hidden group bg-muted"
                       >
-                        <div className="relative shrink-0 w-24 h-16 rounded-md overflow-hidden">
-                          <Image
-                            src={video.thumbnail || video.fallbackThumbnail || "/images/video-fallback.svg"}
-                            alt={video.title}
-                            fill 
-                            unoptimized
-                            className="object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "/images/video-fallback.svg";
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4
-                            title={video?.title ?? ""}
-                            className="text-sm font-medium line-clamp-2 mb-1 whitespace-nowrap max-w-40 text-ellipsis"
-                          >
+                        <Image
+                          src={
+                            video.thumbnail ||
+                            video.fallbackThumbnail ||
+                            "/images/video-fallback.svg"
+                          }
+                          alt={video.title}
+                          fill
+                          unoptimized
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "/images/video-fallback.svg";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <p className="text-white text-sm font-medium text-center line-clamp-3">
                             {video.title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {video.description}
                           </p>
                         </div>
                       </a>
