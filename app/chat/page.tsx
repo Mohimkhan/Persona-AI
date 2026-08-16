@@ -1,13 +1,13 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, ArrowLeft, Bot, User } from "lucide-react";
+import { Send, ArrowLeft, Bot, User, Copy, Check } from "lucide-react";
 import { Suspense } from "react";
 import { showToast } from "@/lib/utils/toast";
 import { useLocalStorage } from "@/hooks";
@@ -21,7 +21,6 @@ import remarkGfm from "remark-gfm";
 /**
  * TODO: Make every chat card size fized to a minimum size when content is greater than that then introduce see more button unless see less
  * TODO: Scroll to bottom button
- * TODO: Copy button on code snippet
  * TODO: Implement alert dialog for clear chat button
  *
  */
@@ -52,6 +51,55 @@ const PERSONAS = {
 
 const markdown =
   "Bro, **Docker** hocche code er jonno shipping container er moto. Age manush jahaje jemon temon kore jinish patato, ekhon shob standard container e jay. Docker apps er jonno same kaj kore—build once, run anywhere! Ekta app ar tar shob dependencies (libraries, settings, etc.) ekta container e package kora hoy, tai seta jekono machine e chalano jay jekhane Docker install kora ache. No more \"it works on my machine\" excuses! 😉\n\n**Analogy**: Imagine you have a delicious biryani recipe. To share it perfectly, you don't just send the ingredients. You cook it, put it in a nice, sealed tiffin box with all the necessary cutlery and instructions. Dockerfile is the recipe and instructions, and the Docker image is the cooked biryani in the tiffin box. Anyone with a fork (Docker installed) can open the box and enjoy the biryani (run the app).\n\n**Example: Simple Web Server**\n\nLet's containerize a super basic Python web server using Flask.\n\n**1. Project Structure:**\n\n```\nmy-flask-app/\n├── app.py\n└── Dockerfile\n```\n\n**2. `app.py` (Your Python Flask App):**\n\n~~~python\nfrom flask import Flask\napp = Flask(__name__)\n\n@app.route('/')\ndef hello_world():\n    return 'Hello from Dockerized Flask App! 🚀'\n\nif __name__ == '__main__':\n    app.run(debug=True, host='0.0.0.0')\n~~~\n\n**3. `Dockerfile` (The Blueprint):**\n\n~~~dockerfile\n# Use an official Python runtime as a parent image\nFROM python:3.9-slim\n\n# Set the working directory in the container\nWORKDIR /app\n\n# Copy the current directory contents into the container at /app\nCOPY . /app\n\n# Install any needed packages specified in requirements.txt\n# If you don't have a requirements.txt, you can install Flask directly\n# RUN pip install --no-cache-dir -r requirements.txt\nRUN pip install Flask\n\n# Make port 5000 available to the world outside this container\nEXPOSE 5000\n\n# Define environment variable\nENV NAME World\n\n# Run app.py when the container launches\nCMD [\"python\", \"app.py\"]\n~~~\n\n**Explanation of Dockerfile:**\n\n*   `FROM python:3.9-slim`: Starts with a lightweight official Python image.\n*   `WORKDIR /app`: Sets the default directory inside the container.\n*   `COPY . /app`: Copies your app files from your local machine into the container's `/app` directory.\n*   `RUN pip install Flask`: Installs the Flask library.\n*   `EXPOSE 5000`: Informs Docker that the container listens on port 5000 at runtime.\n*   `CMD [\"python\", \"app.py\"]`: Specifies the command to run when the container starts.\n\n**Steps to Build and Run:**\n\n1.  **Navigate to your project directory** in the terminal:\n    ~~~\nbash\ncd my-flask-app\n~~~\n2.  **Build the Docker image**: Give it a name, like `my-flask-app`.\n    ~~~\ndocker build -t my-flask-app .\n~~~\n3.  **Run the Docker container**: Map port 5000 on your machine to port 5000 in the container.\n    ~~~\ndocker run -p 5000:5000 my-flask-app\n~~~\n4.  Now, open your web browser and go to `http://localhost:5000`. You should see \"Hello from Dockerized Flask App! 🚀\". Boom! Scalable deployment achieved.\n\n**Recommended Videos for Deeper Dive:**\n\n1.  **Docker Tutorial for Beginners (Full Course)** by freeCodeCamp.org: This is a comprehensive course that covers all the basics and more.\n    *   Link: ~~~https://www.youtube.com/watch?v=3c-i7WX7M_o~~~\n2.  **What is Docker?** by Mosh Hamedani: A concise and clear explanation, perfect for understanding the core concepts.\n    *   Link: ~~~https://www.youtube.com/watch?v=gAkw7_218Xk~~~\n\nThese resources should give you a solid understanding and practical skills. Let me know if you want to explore more complex scenarios, like multi-container apps with Docker Compose!";
+
+const CodeBlock = ({
+  match,
+  children,
+  rest,
+}: {
+  match: RegExpExecArray;
+  children: string | ReactNode;
+  rest: any;
+}) => {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(String(children).replace(/\n$/, ""));
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group my-4 rounded-md overflow-hidden bg-[#1d1f21] border border-white/10">
+      <div className="flex items-center justify-between px-4 py-1.5 bg-black/40 text-xs text-zinc-400 select-none border-b border-white/5">
+        <span>{match[1]}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 hover:text-zinc-100 transition-colors py-1"
+        >
+          {isCopied ? (
+            <Check size={14} className="text-green-500" />
+          ) : (
+            <Copy size={14} />
+          )}
+          {isCopied ? (
+            <span className="text-green-500">Copied!</span>
+          ) : (
+            "Copy code"
+          )}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        {...rest}
+        PreTag="div"
+        children={String(children).replace(/\n$/, "")}
+        language={match[1]}
+        style={atomDark}
+        className="!m-0 !text-sm !bg-transparent"
+      />
+    </div>
+  );
+};
 
 function ChatComponent() {
   const searchParams = useSearchParams();
@@ -257,13 +305,10 @@ function ChatComponent() {
                           props;
                         const match = /language-(\w+)/.exec(className || "");
                         return match ? (
-                          <SyntaxHighlighter
-                            {...rest}
-                            PreTag="div"
-                            children={String(children).replace(/\n$/, "")}
-                            language={match[1]}
-                            style={atomDark}
-                            className="rounded-md my-2 !text-sm"
+                          <CodeBlock
+                            match={match}
+                            children={children}
+                            rest={rest}
                           />
                         ) : (
                           <code
