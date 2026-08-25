@@ -62,7 +62,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground">
-                    Chat with your Angry Girlfriend. She's passive-aggressive, overthinks everything, and just wants your attention. Proceed with caution.
+                    Chat with your Angry Girlfriend. She&apos;s passive-aggressive, overthinks everything, and just wants your attention. Proceed with caution.
                   </p>
                 </CardContent>
                 <CardFooter className="flex justify-center mt-auto">
@@ -95,7 +95,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground">
-                    Discuss advanced web concepts, architecture, and system design. He'll explain everything using a real-world analogy.
+                    Discuss advanced web concepts, architecture, and system design. He&apos;ll explain everything using a real-world analogy.
                   </p>
                 </CardContent>
                 <CardFooter className="flex justify-center mt-auto">
