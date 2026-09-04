@@ -294,7 +294,7 @@ function ChatComponent() {
                 className={`rounded-2xl px-4 py-3 ${
                   m.role === "user"
                     ? "bg-primary text-primary-foreground rounded-tr-sm"
-                    : "bg-muted text-foreground rounded-tl-sm"
+                    : "bg-muted text-foreground rounded-tl-sm w-full"
                 }`}
               >
                 <div className="text-sm sm:text-base leading-relaxed overflow-hidden [&>p]:mb-2 [&>p:last-child]:mb-0">
