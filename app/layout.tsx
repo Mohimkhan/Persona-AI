@@ -21,29 +21,6 @@ export const metadata: Metadata = {
   title: "Persona AI",
   description:
     "Chat with accurate AI representations of your favorite personalities.",
-  openGraph: {
-    title: "Persona AI Chat",
-    description:
-      "Chat with accurate AI representations of your favorite personalities.",
-    url: "https://persona-ai.atikmustakimmohim.com",
-    siteName: "Persona AI",
-    images: [
-      {
-        url: "/home_page_ss.png",
-        width: 1200,
-        height: 630,
-        alt: "Persona AI Chat",
-      },
-    ],
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Persona AI Chat",
-    description:
-      "Chat with accurate AI representations of your favorite personalities.",
-    images: ["/home_page_ss.png"],
-  },
 };
 
 export default function RootLayout({
