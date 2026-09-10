@@ -335,11 +335,12 @@ export async function POST(req: Request) {
       { error: "Failed to parse AI response correctly" },
       { status: 500 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Chat API Error:", error);
 
-    let errorCode = error?.status || error?.code || error?.error?.code || 500;
-    let errorMessage = error?.message || "Internal Server Error";
+    const err = error as Error & { status?: number; code?: number; error?: { code?: number } };
+    let errorCode = err?.status || err?.code || err?.error?.code || 500;
+    let errorMessage = err?.message || "Internal Server Error";
 
     // Attempt to parse the error message if it's a JSON string
     try {
@@ -348,7 +349,7 @@ export async function POST(req: Request) {
         errorCode = 503;
         errorMessage = parsedMessage.error.message;
       }
-    } catch (e) {
+    } catch {
       // Ignore if not valid JSON
     }
 

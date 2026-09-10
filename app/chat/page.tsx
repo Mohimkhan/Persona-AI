@@ -456,7 +456,7 @@ function ChatComponent() {
                 },
               ]);
             } catch (error) {
-              if ((error as any)?.code === 503) {
+              if ((error as { code?: number })?.code === 503) {
                 showToast({
                   message: "Model is currently busy right now",
                   type: "error",
