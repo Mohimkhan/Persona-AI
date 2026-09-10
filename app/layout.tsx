@@ -17,11 +17,16 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://persona-ai.atikmustakimmohim.com"),
   title: "Persona AI",
-  description: "Chat with accurate AI representations of your favorite personalities.",
+  description:
+    "Chat with accurate AI representations of your favorite personalities.",
   openGraph: {
     title: "Persona AI Chat",
-    description: "Chat with accurate AI representations of your favorite personalities.",
+    description:
+      "Chat with accurate AI representations of your favorite personalities.",
+    url: "https://persona-ai.atikmustakimmohim.com",
+    siteName: "Persona AI",
     images: [
       {
         url: "/home_page_ss.png",
@@ -35,7 +40,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Persona AI Chat",
-    description: "Chat with accurate AI representations of your favorite personalities.",
+    description:
+      "Chat with accurate AI representations of your favorite personalities.",
     images: ["/home_page_ss.png"],
   },
 };
@@ -46,10 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-[family-name:var(--font-geist-sans)] w-full min-h-[100dvh] dark:bg-black bg-white`}
       >
