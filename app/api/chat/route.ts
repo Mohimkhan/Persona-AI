@@ -335,11 +335,41 @@ export async function POST(req: Request) {
       { error: "Failed to parse AI response correctly" },
       { status: 500 },
     );
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Chat API Error:", error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+
+    let errorCode = error?.status || error?.code || error?.error?.code || 500;
+    let errorMessage = error?.message || "Internal Server Error";
+
+    // Attempt to parse the error message if it's a JSON string
+    try {
+      const parsedMessage = JSON.parse(errorMessage);
+      if (parsedMessage?.error?.code === 503) {
+        errorCode = 503;
+        errorMessage = parsedMessage.error.message;
+      }
+    } catch (e) {
+      // Ignore if not valid JSON
+    }
+
+    // Fallback detection for 503 errors
+    if (
+      errorMessage.includes("503") ||
+      errorMessage.includes("UNAVAILABLE") ||
+      errorMessage.includes("high demand")
+    ) {
+      errorCode = 503;
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: errorMessage,
+        code: errorCode,
+      }),
+      {
+        status: errorCode === 503 ? 503 : 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

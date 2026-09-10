@@ -437,7 +437,13 @@ function ChatComponent() {
                 }),
               });
 
-              if (!res.ok) throw new Error("Failed to fetch");
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                if (errorData) {
+                  throw errorData;
+                }
+                throw new Error("Failed to fetch");
+              }
 
               const data = await res.json();
               setLocalMessages((prev: Message[]) => [
@@ -450,7 +456,14 @@ function ChatComponent() {
                 },
               ]);
             } catch (error) {
-              console.error(error);
+              if ((error as any)?.code === 503) {
+                showToast({
+                  message: "Model is currently busy right now",
+                  type: "error",
+                });
+                return;
+              }
+
               showToast({ message: "Something went wrong", type: "error" });
             } finally {
               setIsLoading(false);
