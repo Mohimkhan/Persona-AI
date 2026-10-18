@@ -20,6 +20,7 @@ const Header = () => {
             src="/final_personal_logo.png"
             alt="Persona AI"
             fill
+            sizes="(max-width: 640px) 192px, 224px"
             className="block object-contain object-left"
           />
           <div className="absolute font-semibold top-1/2 -translate-y-1/2 translate-x-12">
