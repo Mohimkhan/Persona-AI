@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ["youtube-search-without-api-key"],
-  },
+  cacheComponents: true,
+  partialPrefetching: true,
+  serverExternalPackages: ["youtube-search-without-api-key"],
   images: {
+    qualities: [50, 75, 100],
     remotePatterns: [
       {
         hostname: "img.youtube.com",
