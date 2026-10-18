@@ -1,14 +1,28 @@
 import { appName, socialMediaHandle, socialProfileUrl } from "@/constants";
 import { LinkPreview } from "../ui/link-preview";
+import { Suspense } from "react";
+
+function CurrentYear() {
+  return <>{new Date().getFullYear()}</>;
+}
 
 const Footer = () => {
   return (
     <div className="w-full cursor-pointer dark:bg-transparent dark:text-white text-black font-semibold tracking-wider text-[9px] md:text-[16px]">
       <div className="flex justify-center items-center flex-col sm:flex-row">
-        <span>
-          {`© ${new Date().getFullYear()} ${appName}. All rights reserved and build with ❤️ by`}
-          {""}
-        </span>
+        <Suspense
+          fallback={
+            <span>
+              {`© 2026 ${appName}. All rights reserved and build with ❤️ by`}
+              {""}
+            </span>
+          }
+        >
+          <span>
+            © <CurrentYear /> {appName}. All rights reserved and build with ❤️ by
+            {""}
+          </span>
+        </Suspense>
         <LinkPreview
           url={socialProfileUrl}
           isStatic={true}
