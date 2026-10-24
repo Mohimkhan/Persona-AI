@@ -113,3 +113,5 @@ export const usePortal = (domNode?: HTMLElement | null) => {
 
   return { Portal };
 };
+
+export * from "./useSupabaseChat";
