@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { createClient } from "@/lib/utils/supabase/client";
 
 interface ChatSidebarProps {
@@ -54,6 +55,10 @@ export function ChatSidebar({
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+
+  // Dialog states for delete chat & logout confirmation
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const supabase = createClient();
   const isGuest = user?.is_anonymous ?? true;
@@ -102,11 +107,9 @@ export function ChatSidebar({
     setEditingChatId(null);
   };
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to sign out?")) {
-      await supabase.auth.signOut();
-      if (onSessionChange) onSessionChange();
-    }
+  const handleExecuteLogout = async () => {
+    await supabase.auth.signOut();
+    if (onSessionChange) onSessionChange();
   };
 
   return (
@@ -129,9 +132,41 @@ export function ChatSidebar({
         }}
       />
 
+      {/* Delete Chat Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!chatToDelete}
+        onClose={() => setChatToDelete(null)}
+        onConfirm={() => {
+          if (chatToDelete) {
+            onDeleteChat(chatToDelete.id);
+            setChatToDelete(null);
+          }
+        }}
+        title="Delete conversation?"
+        description={`Are you sure you want to delete "${
+          chatToDelete?.title || "this chat"
+        }"? All messages in this conversation will be permanently removed.`}
+        confirmText="Delete Chat"
+        variant="destructive"
+        icon={<Trash2 className="w-5 h-5" />}
+      />
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleExecuteLogout}
+        title="Sign out of your account?"
+        description="Are you sure you want to sign out? You can sign back in at any time to access your saved conversations."
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        variant="destructive"
+        icon={<LogOut className="w-5 h-5" />}
+      />
+
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-card border-r border-border flex flex-col h-full transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:static inset-y-0 left-0 z-40 w-72 sm:w-80 bg-card border-r border-border flex flex-col h-full transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -295,9 +330,7 @@ export function ChatSidebar({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm("Are you sure you want to delete this chat?")) {
-                            onDeleteChat(chat.id);
-                          }
+                          setChatToDelete(chat);
                         }}
                         title="Delete Chat"
                         className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
@@ -344,7 +377,7 @@ export function ChatSidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                 title="Sign Out"
               >

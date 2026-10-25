@@ -16,6 +16,7 @@ import {
   Check,
   PanelLeft,
   ArrowDown,
+  Trash2,
 } from "lucide-react";
 import { type YouTubeVideo } from "../actions/yt";
 import Image from "next/image";
@@ -24,6 +25,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   useSupabaseChat,
   PERSONAS,
@@ -86,6 +88,7 @@ function ChatComponent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const {
     user,
@@ -139,6 +142,18 @@ function ChatComponent() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden relative">
+      {/* Clear Chat Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearCurrentChat}
+        title="Clear conversation?"
+        description="Are you sure you want to clear all messages in this conversation? This action cannot be undone."
+        confirmText="Clear Chat"
+        variant="destructive"
+        icon={<Trash2 className="w-5 h-5" />}
+      />
+
       {/* Left Chat Sidebar */}
       <ChatSidebar
         chats={chats}
@@ -222,11 +237,7 @@ function ChatComponent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (window.confirm("Are you sure you want to clear this chat?")) {
-                  handleClearCurrentChat();
-                }
-              }}
+              onClick={() => setShowClearConfirm(true)}
               className="hidden sm:flex text-xs h-8 text-destructive border-destructive hover:bg-destructive/10"
             >
               Clear Chat
@@ -260,11 +271,7 @@ function ChatComponent() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (window.confirm("Are you sure you want to clear this chat?")) {
-                handleClearCurrentChat();
-              }
-            }}
+            onClick={() => setShowClearConfirm(true)}
             className="text-xs h-7 text-destructive border-destructive px-2"
           >
             Clear
