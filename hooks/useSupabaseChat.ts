@@ -376,16 +376,24 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChatId, activePersona, chats, loadMessagesForChat],
   );
 
-  // Rename a chat title
+  // Rename a chat title with client-side validation to prevent redundant DB calls
   const handleRenameChat = useCallback(
     async (chatId: string, newTitle: string) => {
-      if (!newTitle.trim()) return;
+      const trimmedNew = newTitle.trim();
+      if (!trimmedNew) return;
+
+      const currentChat = chats.find((c) => c.id === chatId);
+      const trimmedOld = (currentChat?.title || "").trim();
+
+      // Client-side check: if title is unchanged, do not perform unnecessary DB call
+      if (trimmedNew === trimmedOld) return;
+
       try {
-        const res = await updateChatTitleAction(chatId, newTitle.trim());
+        const res = await updateChatTitleAction(chatId, trimmedNew);
         if (!res.success) throw new Error(res.error || "Failed to rename chat");
         setChats((prev) =>
           prev.map((c) =>
-            c.id === chatId ? { ...c, title: newTitle.trim() } : c,
+            c.id === chatId ? { ...c, title: trimmedNew } : c,
           ),
         );
         showToast({ message: "Chat renamed", type: "success" });
@@ -394,7 +402,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
         showToast({ message: "Failed to rename chat", type: "error" });
       }
     },
-    [],
+    [chats],
   );
 
   // Refresh user session and chats after login or account link

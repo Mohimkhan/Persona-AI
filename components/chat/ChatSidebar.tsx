@@ -91,8 +91,13 @@ export function ChatSidebar({
   };
 
   const handleSaveRename = (chatId: string) => {
-    if (onRenameChat && editTitle.trim()) {
-      onRenameChat(chatId, editTitle.trim());
+    const currentChat = chats.find((c) => c.id === chatId);
+    const trimmedNew = editTitle.trim();
+    const trimmedOld = (currentChat?.title || "").trim();
+
+    // Only call rename action if title actually changed and is non-empty
+    if (onRenameChat && trimmedNew && trimmedNew !== trimmedOld) {
+      onRenameChat(chatId, trimmedNew);
     }
     setEditingChatId(null);
   };
