@@ -1,6 +1,9 @@
 "use server";
 
-import { getSupabaseServerClient } from "@/lib/utils/supabase/server";
+import {
+  getSupabaseServerClient,
+  createServerSupabaseAdminClient,
+} from "@/lib/utils/supabase/server";
 import { Chat, Message as DbMessage } from "@/types/database.types";
 import { type YouTubeVideo } from "@/app/actions/yt";
 
@@ -55,9 +58,14 @@ export async function fetchChatsAction(): Promise<{
 }> {
   try {
     const supabase = await getSupabaseServerClient();
-    const {
+    let {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (!user) {
+      const { data: anonData } = await supabase.auth.signInAnonymously();
+      user = anonData?.user || null;
+    }
 
     if (!user) {
       return { success: false, chats: [], error: "Not authenticated" };
@@ -90,9 +98,14 @@ export async function createChatAction(
 ): Promise<{ success: boolean; chat?: Chat; error?: string }> {
   try {
     const supabase = await getSupabaseServerClient();
-    const {
+    let {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (!user) {
+      const { data: anonData } = await supabase.auth.signInAnonymously();
+      user = anonData?.user || null;
+    }
 
     if (!user) {
       return { success: false, error: "Not authenticated" };
@@ -280,9 +293,14 @@ export async function migrateLocalStorageChatsAction(
 ): Promise<{ success: boolean; migratedCount: number; error?: string }> {
   try {
     const supabase = await getSupabaseServerClient();
-    const {
+    let {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (!user) {
+      const { data: anonData } = await supabase.auth.signInAnonymously();
+      user = anonData?.user || null;
+    }
 
     if (!user) {
       return { success: false, migratedCount: 0, error: "Not authenticated" };
@@ -333,5 +351,41 @@ export async function migrateLocalStorageChatsAction(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return { success: false, migratedCount: 0, error: message };
+  }
+}
+
+/**
+ * Server Action: Transfers all chats from a guest user to an authenticated user when logging in.
+ */
+export async function mergeGuestChatsAction(
+  guestUserId: string,
+): Promise<{ success: boolean; mergedCount: number; error?: string }> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || user.id === guestUserId) {
+      return { success: true, mergedCount: 0 };
+    }
+
+    // Safely transfer chats across user_ids on the server
+    const admin = await createServerSupabaseAdminClient();
+    const { data: updated, error } = await admin
+      .from("chats")
+      .update({ user_id: user.id })
+      .eq("user_id", guestUserId)
+      .select();
+
+    if (error) {
+      console.error("mergeGuestChatsAction error:", error);
+      return { success: false, mergedCount: 0, error: error.message };
+    }
+
+    return { success: true, mergedCount: updated?.length || 0 };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal Server Error";
+    return { success: false, mergedCount: 0, error: message };
   }
 }

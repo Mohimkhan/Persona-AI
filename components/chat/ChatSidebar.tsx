@@ -4,17 +4,24 @@ import { useState } from "react";
 import { Chat } from "@/types/database.types";
 import { PersonaType, PERSONAS } from "@/hooks/useSupabaseChat";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Plus,
   Trash2,
+  Edit2,
+  Check,
   MessageSquare,
   Bot,
   User as UserIcon,
   X,
   Sparkles,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { createClient } from "@/lib/utils/supabase/client";
 
 interface ChatSidebarProps {
   chats: Chat[];
@@ -26,6 +33,8 @@ interface ChatSidebarProps {
   onSelectChat: (chatId: string) => void;
   onCreateNewChat: (persona?: PersonaType) => void;
   onDeleteChat: (chatId: string) => void;
+  onRenameChat?: (chatId: string, newTitle: string) => void;
+  onSessionChange?: () => void;
 }
 
 export function ChatSidebar({
@@ -38,8 +47,16 @@ export function ChatSidebar({
   onSelectChat,
   onCreateNewChat,
   onDeleteChat,
+  onRenameChat,
+  onSessionChange,
 }: ChatSidebarProps) {
   const [filterPersona, setFilterPersona] = useState<"all" | PersonaType>("all");
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+
+  const supabase = createClient();
+  const isGuest = user?.is_anonymous ?? true;
 
   const filteredChats = chats.filter((c) => {
     if (filterPersona === "all") return true;
@@ -67,7 +84,25 @@ export function ChatSidebar({
     }
   };
 
-  const isGuest = user?.is_anonymous ?? true;
+  const handleStartRename = (e: React.MouseEvent, chat: Chat) => {
+    e.stopPropagation();
+    setEditingChatId(chat.id);
+    setEditTitle(chat.title || "");
+  };
+
+  const handleSaveRename = (chatId: string) => {
+    if (onRenameChat && editTitle.trim()) {
+      onRenameChat(chatId, editTitle.trim());
+    }
+    setEditingChatId(null);
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm("Are you sure you want to sign out?")) {
+      await supabase.auth.signOut();
+      if (onSessionChange) onSessionChange();
+    }
+  };
 
   return (
     <>
@@ -78,6 +113,16 @@ export function ChatSidebar({
           onClick={onClose}
         />
       )}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={user}
+        onAuthSuccess={() => {
+          if (onSessionChange) onSessionChange();
+        }}
+      />
 
       {/* Sidebar Container */}
       <aside
@@ -164,6 +209,7 @@ export function ChatSidebar({
           ) : (
             filteredChats.map((chat) => {
               const isActive = chat.id === activeChatId;
+              const isEditing = editingChatId === chat.id;
               const personaInfo =
                 PERSONAS[chat.persona as PersonaType] || PERSONAS.tech_bro;
 
@@ -171,8 +217,10 @@ export function ChatSidebar({
                 <div
                   key={chat.id}
                   onClick={() => {
-                    onSelectChat(chat.id);
-                    if (window.innerWidth < 768) onClose();
+                    if (!isEditing) {
+                      onSelectChat(chat.id);
+                      if (window.innerWidth < 768) onClose();
+                    }
                   }}
                   className={`group relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer text-left transition-colors ${
                     isActive
@@ -193,28 +241,66 @@ export function ChatSidebar({
                   </Avatar>
 
                   {/* Title & Timestamp */}
-                  <div className="flex-1 min-w-0 pr-6">
-                    <p className="text-xs truncate leading-snug">
-                      {chat.title || "New Conversation"}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground/70 block mt-0.5">
-                      {formatRelativeTime(chat.updated_at)}
-                    </span>
+                  <div className="flex-1 min-w-0 pr-12">
+                    {isEditing ? (
+                      <div
+                        className="flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveRename(chat.id);
+                            if (e.key === "Escape") setEditingChatId(null);
+                          }}
+                          className="h-6 text-xs px-1.5 py-0"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveRename(chat.id)}
+                          className="text-primary hover:text-primary/80 p-0.5"
+                          title="Save title"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs truncate leading-snug">
+                          {chat.title || "New Conversation"}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground/70 block mt-0.5">
+                          {formatRelativeTime(chat.updated_at)}
+                        </span>
+                      </>
+                    )}
                   </div>
 
-                  {/* Delete Button (visible on hover / focus) */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm("Are you sure you want to delete this chat?")) {
-                        onDeleteChat(chat.id);
-                      }
-                    }}
-                    title="Delete Chat"
-                    className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Action Buttons (visible on hover) */}
+                  {!isEditing && (
+                    <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => handleStartRename(e, chat)}
+                        title="Rename Chat"
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm("Are you sure you want to delete this chat?")) {
+                            onDeleteChat(chat.id);
+                          }
+                        }}
+                        title="Delete Chat"
+                        className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -222,27 +308,58 @@ export function ChatSidebar({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-border bg-card/50">
-          <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-muted/40">
-            <Avatar className="w-7 h-7 shrink-0">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                {isGuest ? (
-                  <Bot className="w-3.5 h-3.5" />
-                ) : (
-                  <UserIcon className="w-3.5 h-3.5" />
-                )}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate text-foreground">
-                {isGuest ? "Guest User" : user?.email?.split("@")[0] || "User"}
-              </p>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                <span>{isGuest ? "Cloud Synced" : user?.email}</span>
-              </p>
+        <div className="p-3 border-t border-border bg-card/50 space-y-2">
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-muted/40">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Avatar className="w-7 h-7 shrink-0">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  {isGuest ? (
+                    <Bot className="w-3.5 h-3.5" />
+                  ) : (
+                    <UserIcon className="w-3.5 h-3.5" />
+                  )}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate text-foreground">
+                  {isGuest
+                    ? "Guest User"
+                    : user?.user_metadata?.full_name ||
+                      user?.email?.split("@")[0] ||
+                      "Account"}
+                </p>
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                  <span>{isGuest ? "Temporary Session" : user?.email}</span>
+                </p>
+              </div>
             </div>
+
+            {!isGuest && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                title="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
+
+          {/* Upgrade / Sign In Banner for Guests */}
+          {isGuest && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full text-xs h-8 gap-1.5 border-primary/20 hover:border-primary/50 text-foreground"
+            >
+              <LogIn className="w-3.5 h-3.5 text-primary" />
+              <span>Sign In / Save Chats</span>
+            </Button>
+          )}
         </div>
       </aside>
     </>

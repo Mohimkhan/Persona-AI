@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   PanelLeft,
+  ArrowDown,
 } from "lucide-react";
 import { type YouTubeVideo } from "../actions/yt";
 import Image from "next/image";
@@ -84,6 +85,7 @@ function ChatComponent() {
   const initialPersona = (searchParams?.get("persona") as PersonaType) || "tech_bro";
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const {
     user,
@@ -96,21 +98,34 @@ function ChatComponent() {
     handleSelectChat,
     handleCreateNewChat,
     handleDeleteChat,
+    handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
     setActivePersona,
+    refreshSession,
   } = useSupabaseChat(initialPersona);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
   const personaDetails = PERSONAS[activePersona] || PERSONAS.tech_bro;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
 
+  const handleScroll = () => {
+    if (!mainScrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = mainScrollRef.current;
+    const isScrolledUp = scrollHeight - scrollTop - clientHeight > 180;
+    setShowScrollBottom(isScrolledUp);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handlePersonaSwitch = (persona: PersonaType) => {
     setActivePersona(persona);
-    // If user switches persona while chatting, create or switch to that persona
     handleCreateNewChat(persona);
   };
 
@@ -123,7 +138,7 @@ function ChatComponent() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden relative">
       {/* Left Chat Sidebar */}
       <ChatSidebar
         chats={chats}
@@ -135,10 +150,12 @@ function ChatComponent() {
         onSelectChat={handleSelectChat}
         onCreateNewChat={handleCreateNewChat}
         onDeleteChat={handleDeleteChat}
+        onRenameChat={handleRenameChat}
+        onSessionChange={refreshSession}
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0">
+      <div className="flex-1 flex flex-col h-full min-w-0 relative">
         {/* Header */}
         <header className="flex-none p-3.5 sm:p-4 border-b border-border flex items-center justify-between bg-card">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -255,7 +272,11 @@ function ChatComponent() {
         </div>
 
         {/* Chat Messages */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <main
+          ref={mainScrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6"
+        >
           {isLoadingMessages ? (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
               <div className="flex items-center gap-2">
@@ -415,6 +436,17 @@ function ChatComponent() {
           )}
           <div ref={messagesEndRef} />
         </main>
+
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-6 sm:right-10 z-30 p-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-105 active:scale-95 transition-all"
+            title="Scroll to bottom"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Input Area */}
         <footer className="flex-none p-4 border-t border-border bg-background">

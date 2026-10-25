@@ -34,7 +34,7 @@ begin
       null
     );
 
-    insert into public.users (id, email, fullname, image_url, raw_user_meta_data, created_at, updated_at)
+    insert into public.users as u (id, email, fullname, image_url, raw_user_meta_data, created_at, updated_at)
     values (
       new.id,
       new.email,
@@ -46,8 +46,8 @@ begin
     )
     on conflict (id) do update set
       email = excluded.email,
-      fullname = coalesce(excluded.fullname, public.users.fullname),
-      image_url = coalesce(excluded.image_url, public.users.image_url),
+      fullname = coalesce(excluded.fullname, u.fullname),
+      image_url = coalesce(excluded.image_url, u.image_url),
       raw_user_meta_data = excluded.raw_user_meta_data,
       updated_at = now();
 
@@ -58,13 +58,13 @@ begin
       new.raw_user_meta_data->>'full_name',
       new.raw_user_meta_data->>'name',
       new.raw_user_meta_data->>'user_name',
-      public.users.fullname
+      (select u.fullname from public.users u where u.id = new.id)
     );
     v_image_url := coalesce(
       new.raw_user_meta_data->>'avatar_url',
       new.raw_user_meta_data->>'picture',
       new.raw_user_meta_data->>'image_url',
-      public.users.image_url
+      (select u.image_url from public.users u where u.id = new.id)
     );
 
     update public.users

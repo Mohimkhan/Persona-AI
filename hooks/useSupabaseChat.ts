@@ -110,7 +110,43 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
         if (!resolvedUser) {
           const { data: anonData, error: anonError } =
             await supabase.auth.signInAnonymously();
-          if (anonError) throw anonError;
+          if (anonError) {
+            console.warn(
+              "Supabase anonymous sign-ins are not enabled:",
+              anonError.message,
+            );
+            // Graceful fallback: load directly from localStorage so user still has access
+            if (typeof window !== "undefined") {
+              const localRaw = window.localStorage.getItem(
+                `chatMessages:${initialPersona}`,
+              );
+              if (localRaw) {
+                try {
+                  const parsed = JSON.parse(localRaw);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    setMessages(parsed);
+                  }
+                } catch (e) {
+                  console.error("Failed to parse local fallback messages:", e);
+                }
+              } else {
+                setMessages([
+                  {
+                    id: "greeting",
+                    role: "assistant",
+                    content: PERSONAS[initialPersona].greeting,
+                  },
+                ]);
+              }
+            }
+            showToast({
+              message:
+                "Anonymous sign-in disabled: please enable it in Supabase (Auth > Providers > Anonymous Sign-ins) to sync with DB.",
+              type: "warning",
+            });
+            setIsLoadingSession(false);
+            return;
+          }
           resolvedUser = anonData.user;
         }
 
@@ -340,6 +376,55 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChatId, activePersona, chats, loadMessagesForChat],
   );
 
+  // Rename a chat title
+  const handleRenameChat = useCallback(
+    async (chatId: string, newTitle: string) => {
+      if (!newTitle.trim()) return;
+      try {
+        const res = await updateChatTitleAction(chatId, newTitle.trim());
+        if (!res.success) throw new Error(res.error || "Failed to rename chat");
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === chatId ? { ...c, title: newTitle.trim() } : c,
+          ),
+        );
+        showToast({ message: "Chat renamed", type: "success" });
+      } catch (err) {
+        console.error("Error renaming chat:", err);
+        showToast({ message: "Failed to rename chat", type: "error" });
+      }
+    },
+    [],
+  );
+
+  // Refresh user session and chats after login or account link
+  const refreshSession = useCallback(async () => {
+    setIsLoadingSession(true);
+    try {
+      const {
+        data: { user: updatedUser },
+      } = await supabase.auth.getUser();
+      setUser(updatedUser);
+
+      if (updatedUser) {
+        const res = await fetchChatsAction();
+        if (res.success) {
+          setChats(res.chats);
+          if (res.chats.length > 0) {
+            const first = res.chats[0];
+            setActiveChatId(first.id);
+            setActivePersona(first.persona as PersonaType);
+            await loadMessagesForChat(first.id, first.persona as PersonaType);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed refreshing session:", e);
+    } finally {
+      setIsLoadingSession(false);
+    }
+  }, [loadMessagesForChat, supabase]);
+
   // Clear messages in active chat via Server Action
   const handleClearCurrentChat = useCallback(async () => {
     if (!activeChatId) return;
@@ -490,8 +575,10 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     handleSelectChat,
     handleCreateNewChat,
     handleDeleteChat,
+    handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
     setActivePersona,
+    refreshSession,
   };
 }
