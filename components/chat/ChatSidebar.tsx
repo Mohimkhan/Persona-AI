@@ -36,6 +36,7 @@ interface ChatSidebarProps {
   onDeleteChat: (chatId: string) => void;
   onRenameChat?: (chatId: string, newTitle: string) => void;
   onSessionChange?: () => void;
+  onLogout?: () => void;
 }
 
 export function ChatSidebar({
@@ -50,6 +51,7 @@ export function ChatSidebar({
   onDeleteChat,
   onRenameChat,
   onSessionChange,
+  onLogout,
 }: ChatSidebarProps) {
   const [filterPersona, setFilterPersona] = useState<"all" | PersonaType>("all");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -108,8 +110,14 @@ export function ChatSidebar({
   };
 
   const handleExecuteLogout = async () => {
-    await supabase.auth.signOut();
-    if (onSessionChange) onSessionChange();
+    if (onLogout) {
+      await onLogout();
+    } else {
+      await supabase.auth.signOut();
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+    }
   };
 
   return (

@@ -106,6 +106,7 @@ function ChatComponent() {
     handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
+    handleLogout,
     setActivePersona,
     refreshSession,
   } = useSupabaseChat(initialPersona);
@@ -175,6 +176,7 @@ function ChatComponent() {
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
         onSessionChange={refreshSession}
+        onLogout={handleLogout}
       />
 
       {/* Main Chat Area */}

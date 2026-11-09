@@ -588,6 +588,25 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChat, activeChatId, activePersona, isSending, messages],
   );
 
+  // Sign out and redirect cleanly to home page
+  const handleLogout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setChats([]);
+      setMessages([]);
+      setActiveChatId(null);
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+    } catch (e) {
+      console.error("Sign out error:", e);
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+    }
+  }, [supabase]);
+
   return {
     user,
     chats,
@@ -606,6 +625,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
+    handleLogout,
     setActivePersona,
     refreshSession,
   };
