@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/utils/supabase/client";
-import { mergeGuestChatsAction } from "@/app/actions/chat";
+import {
+  mergeGuestChatsAction,
+  markDeviceAsRegisteredAction,
+} from "@/app/actions/chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { showToast } from "@/lib/utils/toast";
@@ -40,6 +43,8 @@ export function AuthModal({
           ? `${window.location.origin}/chat`
           : undefined;
 
+      await markDeviceAsRegisteredAction();
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -75,6 +80,8 @@ export function AuthModal({
 
           if (error) throw error;
 
+          await markDeviceAsRegisteredAction();
+
           showToast({
             message: "Account created successfully! Your chats are saved.",
             type: "success",
@@ -88,6 +95,8 @@ export function AuthModal({
           });
 
           if (error) throw error;
+
+          await markDeviceAsRegisteredAction();
 
           showToast({
             message: "Check your email to confirm your account!",
@@ -105,6 +114,8 @@ export function AuthModal({
         });
 
         if (error) throw error;
+
+        await markDeviceAsRegisteredAction();
 
         // If user was a guest and has existing chats, merge them into this account
         if (isGuest && guestId && data.user.id !== guestId) {
