@@ -101,56 +101,29 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     async function init() {
       setIsLoadingSession(true);
       try {
-        // 1. Resolve user session on client / anonymous login
+        // 1. Resolve user session on client without auto-creating guest accounts
         const {
           data: { user: currentUser },
         } = await supabase.auth.getUser();
 
-        let resolvedUser = currentUser;
-        if (!resolvedUser) {
-          const { data: anonData, error: anonError } =
-            await supabase.auth.signInAnonymously();
-          if (anonError) {
-            console.warn(
-              "Supabase anonymous sign-ins are not enabled:",
-              anonError.message,
-            );
-            // Graceful fallback: load directly from localStorage so user still has access
-            if (typeof window !== "undefined") {
-              const localRaw = window.localStorage.getItem(
-                `chatMessages:${initialPersona}`,
-              );
-              if (localRaw) {
-                try {
-                  const parsed = JSON.parse(localRaw);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    setMessages(parsed);
-                  }
-                } catch (e) {
-                  console.error("Failed to parse local fallback messages:", e);
-                }
-              } else {
-                setMessages([
-                  {
-                    id: "greeting",
-                    role: "assistant",
-                    content: PERSONAS[initialPersona].greeting,
-                  },
-                ]);
-              }
-            }
-            showToast({
-              message:
-                "Anonymous sign-in disabled: please enable it in Supabase (Auth > Providers > Anonymous Sign-ins) to sync with DB.",
-              type: "warning",
-            });
-            setIsLoadingSession(false);
-            return;
-          }
-          resolvedUser = anonData.user;
+        if (!currentUser) {
+          setUser(null);
+          setChats([]);
+          setActiveChatId(null);
+          setActivePersona(initialPersona);
+          setMessages([
+            {
+              id: "greeting",
+              role: "assistant",
+              content: PERSONAS[initialPersona].greeting,
+            },
+          ]);
+          setIsLoadingSession(false);
+          setIsLoadingChats(false);
+          return;
         }
 
-        setUser(resolvedUser);
+        setUser(currentUser);
 
         // 2. Perform one-time LocalStorage migration
         if (typeof window !== "undefined") {
@@ -499,7 +472,21 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
           userText,
         );
 
-        if (insertRes.success && insertRes.message) {
+        if (!insertRes.success) {
+          if (insertRes.limitReached) {
+            showToast({
+              message:
+                insertRes.error ||
+                "You have reached the free guest preview limit of 5 messages. Please sign in to continue.",
+              type: "warning",
+            });
+            setMessages((prev) => prev.filter((m) => m.id !== tempId));
+            return { success: false, limitReached: true };
+          }
+          throw new Error(insertRes.error || "Failed to insert message");
+        }
+
+        if (insertRes.message) {
           setMessages((prev) =>
             prev.map((m) => (m.id === tempId ? insertRes.message! : m)),
           );

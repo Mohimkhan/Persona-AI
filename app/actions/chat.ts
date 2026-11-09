@@ -8,7 +8,7 @@ import {
 import { Chat, Message as DbMessage } from "@/types/database.types";
 import { type YouTubeVideo } from "@/app/actions/yt";
 
-export const GUEST_MESSAGE_LIMIT = 5;
+const GUEST_MESSAGE_LIMIT = 5;
 
 export interface SerializedMessage {
   id: string;

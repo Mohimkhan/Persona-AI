@@ -26,6 +26,13 @@ import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { GuestPromptModal } from "@/components/auth/GuestPromptModal";
+import { AuthModal } from "@/components/auth/AuthModal";
+import {
+  checkGuestEligibilityAction,
+  createGuestAccountAction,
+} from "@/app/actions/chat";
+import { showToast } from "@/lib/utils/toast";
 import {
   useSupabaseChat,
   PERSONAS,
@@ -90,6 +97,9 @@ function ChatComponent() {
   const [input, setInput] = useState("");
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isGuestPromptOpen, setIsGuestPromptOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState("");
 
   const {
     user,
@@ -141,16 +151,111 @@ function ChatComponent() {
     handleSwitchPersona(persona);
   };
 
+  const handleContinueAsGuest = async () => {
+    try {
+      const res = await createGuestAccountAction();
+      if (!res.success) {
+        if (res.isRegisteredDevice) {
+          showToast({
+            message: res.error || "Please sign in to continue.",
+            type: "warning",
+          });
+          setIsGuestPromptOpen(false);
+          setIsAuthModalOpen(true);
+          return;
+        }
+        throw new Error(res.error || "Failed to create guest session");
+      }
+
+      await refreshSession();
+      setIsGuestPromptOpen(false);
+
+      if (pendingMessage) {
+        const text = pendingMessage;
+        setPendingMessage("");
+        setInput("");
+        const sendRes = await handleSendMessage(text);
+        if (sendRes?.limitReached) {
+          setIsAuthModalOpen(true);
+        }
+      }
+    } catch (err) {
+      console.error("Guest session error:", err);
+      showToast({
+        message: "Failed to initialize guest session",
+        type: "error",
+      });
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    await refreshSession();
+    setIsAuthModalOpen(false);
+    if (pendingMessage) {
+      const text = pendingMessage;
+      setPendingMessage("");
+      setInput("");
+      const sendRes = await handleSendMessage(text);
+      if (sendRes?.limitReached) {
+        setIsAuthModalOpen(true);
+      }
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isSending) return;
-    const currentInput = input;
+
+    const currentText = input.trim();
+
+    // Guard 1 & 2: If user has no active session, check eligibility and prompt
+    if (!user) {
+      const eligibility = await checkGuestEligibilityAction();
+      if (eligibility.isRegisteredDevice) {
+        showToast({
+          message:
+            "This device is already linked to an account. Please sign in to continue.",
+          type: "warning",
+        });
+        setPendingMessage(currentText);
+        setIsAuthModalOpen(true);
+        return;
+      }
+
+      setPendingMessage(currentText);
+      setIsGuestPromptOpen(true);
+      return;
+    }
+
     setInput("");
-    await handleSendMessage(currentInput);
+    const res = await handleSendMessage(currentText);
+    if (res?.limitReached) {
+      setIsAuthModalOpen(true);
+    }
   };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden relative">
+      {/* Option B Guest / Account Prompt Modal */}
+      <GuestPromptModal
+        isOpen={isGuestPromptOpen}
+        onClose={() => setIsGuestPromptOpen(false)}
+        personaName={personaDetails.name}
+        onSignIn={() => {
+          setIsGuestPromptOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+        onContinueAsGuest={handleContinueAsGuest}
+      />
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={user}
+        onAuthSuccess={handleAuthSuccess}
+      />
+
       {/* Clear Chat Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showClearConfirm}
@@ -242,6 +347,18 @@ function ChatComponent() {
                 Angry GF
               </Button>
             </div>
+
+            {/* Sign In Button for Guests / Visitors */}
+            {(!user || user.is_anonymous) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="hidden sm:flex text-xs h-8 text-primary border-primary/30 hover:bg-primary/10"
+              >
+                {user?.is_anonymous ? "Save Chats" : "Sign In"}
+              </Button>
+            )}
 
             {/* Clear Chat Button */}
             <Button
