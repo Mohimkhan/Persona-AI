@@ -203,34 +203,24 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
           const fetchedChats = chatsRes.chats;
           setChats(fetchedChats);
 
-          if (fetchedChats.length > 0) {
-            const matchingChat =
-              fetchedChats.find((c) => c.persona === initialPersona) ||
-              fetchedChats[0];
+          const matchingChat = fetchedChats.find(
+            (c) => c.persona === initialPersona,
+          );
+          if (matchingChat) {
             setActiveChatId(matchingChat.id);
-            setActivePersona(matchingChat.persona as PersonaType);
-            await loadMessagesForChat(
-              matchingChat.id,
-              matchingChat.persona as PersonaType,
-            );
+            setActivePersona(initialPersona);
+            await loadMessagesForChat(matchingChat.id, initialPersona);
           } else {
-            // Create first chat if none exist
-            const newChatRes = await createChatAction(
-              initialPersona,
-              "New Conversation",
-            );
-            if (newChatRes.success && newChatRes.chat) {
-              setChats([newChatRes.chat]);
-              setActiveChatId(newChatRes.chat.id);
-              setActivePersona(initialPersona);
-              setMessages([
-                {
-                  id: `greeting-${newChatRes.chat.id}`,
-                  role: "assistant",
-                  content: PERSONAS[initialPersona].greeting,
-                },
-              ]);
-            }
+            // Keep the selected initial persona from the URL without forcing to another persona
+            setActiveChatId(null);
+            setActivePersona(initialPersona);
+            setMessages([
+              {
+                id: `greeting-${initialPersona}`,
+                role: "assistant",
+                content: PERSONAS[initialPersona].greeting,
+              },
+            ]);
           }
         }
         setIsLoadingChats(false);
@@ -300,6 +290,28 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChatId, chats, loadMessagesForChat],
   );
 
+  // Switch persona cleanly: switches to existing conversation or prepares fresh draft
+  const handleSwitchPersona = useCallback(
+    async (targetPersona: PersonaType) => {
+      setActivePersona(targetPersona);
+      const existing = chats.find((c) => c.persona === targetPersona);
+      if (existing) {
+        setActiveChatId(existing.id);
+        await loadMessagesForChat(existing.id, targetPersona);
+      } else {
+        setActiveChatId(null);
+        setMessages([
+          {
+            id: `greeting-${targetPersona}`,
+            role: "assistant",
+            content: PERSONAS[targetPersona].greeting,
+          },
+        ]);
+      }
+    },
+    [chats, loadMessagesForChat],
+  );
+
   // Create a new chat session via Server Action
   const handleCreateNewChat = useCallback(
     async (personaToCreate?: PersonaType) => {
@@ -340,31 +352,23 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
         setChats(remainingChats);
 
         if (activeChatId === chatId) {
-          if (remainingChats.length > 0) {
-            const nextChat = remainingChats[0];
+          const matchingPersonaChats = remainingChats.filter(
+            (c) => c.persona === activePersona,
+          );
+          if (matchingPersonaChats.length > 0) {
+            const nextChat = matchingPersonaChats[0];
             setActiveChatId(nextChat.id);
-            setActivePersona(nextChat.persona as PersonaType);
-            await loadMessagesForChat(
-              nextChat.id,
-              nextChat.persona as PersonaType,
-            );
+            await loadMessagesForChat(nextChat.id, activePersona);
           } else {
-            // All chats deleted; create a fresh one
-            const freshRes = await createChatAction(
-              activePersona,
-              "New Conversation",
-            );
-            if (freshRes.success && freshRes.chat) {
-              setChats([freshRes.chat]);
-              setActiveChatId(freshRes.chat.id);
-              setMessages([
-                {
-                  id: `greeting-${freshRes.chat.id}`,
-                  role: "assistant",
-                  content: PERSONAS[activePersona].greeting,
-                },
-              ]);
-            }
+            // All chats for this persona deleted; show greeting cleanly without DB insertion
+            setActiveChatId(null);
+            setMessages([
+              {
+                id: `greeting-${activePersona}`,
+                role: "assistant",
+                content: PERSONAS[activePersona].greeting,
+              },
+            ]);
           }
         }
         showToast({ message: "Chat deleted", type: "success" });
@@ -458,7 +462,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
   // Send message via Server Action and AI route
   const handleSendMessage = useCallback(
     async (inputContent: string) => {
-      if (!inputContent.trim() || isSending || !activeChatId) return;
+      if (!inputContent.trim() || isSending) return;
 
       const userText = inputContent.trim();
       const tempId = `temp-${Date.now()}`;
@@ -473,9 +477,24 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
       setIsSending(true);
 
       try {
+        let currentChatId = activeChatId;
+
+        // If no active chat exists yet, create it lazily
+        if (!currentChatId) {
+          const initialTitle =
+            userText.length > 32 ? userText.slice(0, 32) + "..." : userText;
+          const createRes = await createChatAction(activePersona, initialTitle);
+          if (!createRes.success || !createRes.chat) {
+            throw new Error(createRes.error || "Failed to create conversation");
+          }
+          currentChatId = createRes.chat.id;
+          setActiveChatId(currentChatId);
+          setChats((prev) => [createRes.chat!, ...prev]);
+        }
+
         // 1. Insert user message via Server Action
         const insertRes = await insertMessageAction(
-          activeChatId,
+          currentChatId,
           "user",
           userText,
         );
@@ -493,10 +512,10 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
         ) {
           const newTitle =
             userText.length > 32 ? userText.slice(0, 32) + "..." : userText;
-          updateChatTitleAction(activeChatId, newTitle).catch(console.error);
+          updateChatTitleAction(currentChatId, newTitle).catch(console.error);
           setChats((prev) =>
             prev.map((c) =>
-              c.id === activeChatId ? { ...c, title: newTitle } : c,
+              c.id === currentChatId ? { ...c, title: newTitle } : c,
             ),
           );
         }
@@ -525,7 +544,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
 
         // 4. Save AI assistant message via Server Action
         const assistantRes = await insertMessageAction(
-          activeChatId,
+          currentChatId,
           "assistant",
           assistantText,
           assistantVideos,
@@ -543,9 +562,9 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
 
         // 5. Update local chat list order
         setChats((prev) => {
-          const current = prev.find((c) => c.id === activeChatId);
+          const current = prev.find((c) => c.id === currentChatId);
           if (!current) return prev;
-          const remaining = prev.filter((c) => c.id !== activeChatId);
+          const remaining = prev.filter((c) => c.id !== currentChatId);
           return [
             { ...current, updated_at: new Date().toISOString() },
             ...remaining,
@@ -581,6 +600,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     isLoadingMessages,
     isSending,
     handleSelectChat,
+    handleSwitchPersona,
     handleCreateNewChat,
     handleDeleteChat,
     handleRenameChat,

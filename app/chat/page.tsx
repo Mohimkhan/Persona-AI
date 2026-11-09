@@ -84,7 +84,8 @@ const CodeBlock = ({
 
 function ChatComponent() {
   const searchParams = useSearchParams();
-  const initialPersona = (searchParams?.get("persona") as PersonaType) || "tech_bro";
+  const initialPersona =
+    (searchParams?.get("persona") as PersonaType) || "tech_bro";
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -99,6 +100,7 @@ function ChatComponent() {
     isLoadingMessages,
     isSending,
     handleSelectChat,
+    handleSwitchPersona,
     handleCreateNewChat,
     handleDeleteChat,
     handleRenameChat,
@@ -111,6 +113,13 @@ function ChatComponent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const personaDetails = PERSONAS[activePersona] || PERSONAS.tech_bro;
+
+  // Sync active persona if URL search param changes
+  useEffect(() => {
+    if (initialPersona && initialPersona !== activePersona) {
+      handleSwitchPersona(initialPersona);
+    }
+  }, [initialPersona, activePersona, handleSwitchPersona]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -128,8 +137,7 @@ function ChatComponent() {
   };
 
   const handlePersonaSwitch = (persona: PersonaType) => {
-    setActivePersona(persona);
-    handleCreateNewChat(persona);
+    handleSwitchPersona(persona);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -327,7 +335,7 @@ function ChatComponent() {
                     className={`rounded-2xl px-4 py-3 ${
                       m.role === "user"
                         ? "bg-primary text-primary-foreground rounded-tr-xs"
-                        : "bg-muted text-foreground rounded-tl-xs w-full"
+                        : "bg-muted text-foreground rounded-tl-xs"
                     }`}
                   >
                     <div className="text-sm sm:text-base leading-relaxed overflow-hidden [&>p]:mb-2 [&>p:last-child]:mb-0">
@@ -338,7 +346,9 @@ function ChatComponent() {
                             const { children, className, node, ref, ...rest } =
                               props;
                             void node;
-                            const match = /language-(\w+)/.exec(className || "");
+                            const match = /language-(\w+)/.exec(
+                              className || "",
+                            );
                             return match ? (
                               <CodeBlock match={match} rest={rest}>
                                 {children}
@@ -370,7 +380,10 @@ function ChatComponent() {
                           },
                           ol(props) {
                             return (
-                              <ol {...props} className="list-decimal pl-5 mb-2" />
+                              <ol
+                                {...props}
+                                className="list-decimal pl-5 mb-2"
+                              />
                             );
                           },
                         }}
