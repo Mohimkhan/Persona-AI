@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -90,9 +90,12 @@ const CodeBlock = ({
 };
 
 function ChatComponent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialPersona =
     (searchParams?.get("persona") as PersonaType) || "tech_bro";
+  const prevSearchPersonaRef = useRef<PersonaType>(initialPersona);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -125,12 +128,13 @@ function ChatComponent() {
   const mainScrollRef = useRef<HTMLElement>(null);
   const personaDetails = PERSONAS[activePersona] || PERSONAS.tech_bro;
 
-  // Sync active persona if URL search param changes
+  // Sync active persona ONLY when URL search param actually changes externally (e.g. browser back/forward)
   useEffect(() => {
-    if (initialPersona && initialPersona !== activePersona) {
+    if (initialPersona !== prevSearchPersonaRef.current) {
+      prevSearchPersonaRef.current = initialPersona;
       handleSwitchPersona(initialPersona);
     }
-  }, [initialPersona, activePersona, handleSwitchPersona]);
+  }, [initialPersona, handleSwitchPersona]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -148,6 +152,8 @@ function ChatComponent() {
   };
 
   const handlePersonaSwitch = (persona: PersonaType) => {
+    prevSearchPersonaRef.current = persona;
+    router.replace(`/chat?persona=${persona}`, { scroll: false });
     handleSwitchPersona(persona);
   };
 
@@ -276,8 +282,22 @@ function ChatComponent() {
         user={user}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onSelectChat={handleSelectChat}
-        onCreateNewChat={handleCreateNewChat}
+        onSelectChat={(chatId) => {
+          const selected = chats.find((c) => c.id === chatId);
+          if (selected) {
+            prevSearchPersonaRef.current = selected.persona as PersonaType;
+            router.replace(`/chat?persona=${selected.persona}`, {
+              scroll: false,
+            });
+          }
+          handleSelectChat(chatId);
+        }}
+        onCreateNewChat={(persona) => {
+          const p = persona || activePersona;
+          prevSearchPersonaRef.current = p;
+          router.replace(`/chat?persona=${p}`, { scroll: false });
+          handleCreateNewChat(p);
+        }}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
         onSessionChange={refreshSession}

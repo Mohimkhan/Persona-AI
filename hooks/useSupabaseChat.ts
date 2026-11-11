@@ -50,6 +50,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
   const [isSending, setIsSending] = useState(false);
 
   const isInitializingRef = useRef(false);
+  const isSwitchingRef = useRef(false);
   const supabase = createClient();
 
   // Find active chat object
@@ -176,24 +177,59 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
           const fetchedChats = chatsRes.chats;
           setChats(fetchedChats);
 
-          const matchingChat = fetchedChats.find(
-            (c) => c.persona === initialPersona,
-          );
-          if (matchingChat) {
-            setActiveChatId(matchingChat.id);
+          const personaChats = fetchedChats
+            .filter((c) => c.persona === initialPersona)
+            .sort(
+              (a, b) =>
+                new Date(b.updated_at).getTime() -
+                new Date(a.updated_at).getTime(),
+            );
+          const mostRecent = personaChats[0];
+
+          if (mostRecent) {
+            setActiveChatId(mostRecent.id);
             setActivePersona(initialPersona);
-            await loadMessagesForChat(matchingChat.id, initialPersona);
+            await loadMessagesForChat(mostRecent.id, initialPersona);
           } else {
-            // Keep the selected initial persona from the URL without forcing to another persona
-            setActiveChatId(null);
-            setActivePersona(initialPersona);
-            setMessages([
-              {
-                id: `greeting-${initialPersona}`,
-                role: "assistant",
-                content: PERSONAS[initialPersona].greeting,
-              },
-            ]);
+            if (currentUser) {
+              const newChatRes = await createChatAction(
+                initialPersona,
+                "New Conversation",
+              );
+              if (newChatRes.success && newChatRes.chat) {
+                setChats((prev) => [newChatRes.chat!, ...prev]);
+                setActiveChatId(newChatRes.chat.id);
+                setActivePersona(initialPersona);
+                setMessages([
+                  {
+                    id: `greeting-${newChatRes.chat.id}`,
+                    role: "assistant",
+                    content: PERSONAS[initialPersona].greeting,
+                  },
+                ]);
+              } else {
+                setActiveChatId(null);
+                setActivePersona(initialPersona);
+                setMessages([
+                  {
+                    id: `greeting-${initialPersona}`,
+                    role: "assistant",
+                    content: PERSONAS[initialPersona].greeting,
+                  },
+                ]);
+              }
+            } else {
+              // Visitor before guest account
+              setActiveChatId(null);
+              setActivePersona(initialPersona);
+              setMessages([
+                {
+                  id: `greeting-${initialPersona}`,
+                  role: "assistant",
+                  content: PERSONAS[initialPersona].greeting,
+                },
+              ]);
+            }
           }
         }
         setIsLoadingChats(false);
@@ -263,26 +299,69 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChatId, chats, loadMessagesForChat],
   );
 
-  // Switch persona cleanly: switches to existing conversation or prepares fresh draft
+  // Switch persona: selects the most recent chat for this persona, or creates a New Conversation if 0 exist
   const handleSwitchPersona = useCallback(
     async (targetPersona: PersonaType) => {
-      setActivePersona(targetPersona);
-      const existing = chats.find((c) => c.persona === targetPersona);
-      if (existing) {
-        setActiveChatId(existing.id);
-        await loadMessagesForChat(existing.id, targetPersona);
-      } else {
-        setActiveChatId(null);
-        setMessages([
-          {
-            id: `greeting-${targetPersona}`,
-            role: "assistant",
-            content: PERSONAS[targetPersona].greeting,
-          },
-        ]);
+      if (isSwitchingRef.current) return;
+      isSwitchingRef.current = true;
+
+      try {
+        setActivePersona(targetPersona);
+
+        // Find all existing chats for this persona, sorted by updated_at descending
+        const personaChats = chats
+          .filter((c) => c.persona === targetPersona)
+          .sort(
+            (a, b) =>
+              new Date(b.updated_at).getTime() -
+              new Date(a.updated_at).getTime(),
+          );
+
+        const mostRecent = personaChats[0];
+
+        if (mostRecent) {
+          if (activeChatId !== mostRecent.id) {
+            setActiveChatId(mostRecent.id);
+            await loadMessagesForChat(mostRecent.id, targetPersona);
+          }
+        } else {
+          // No chat exists with this persona yet
+          if (user) {
+            try {
+              const res = await createChatAction(
+                targetPersona,
+                "New Conversation",
+              );
+              if (res.success && res.chat) {
+                setChats((prev) => [res.chat!, ...prev]);
+                setActiveChatId(res.chat.id);
+                setMessages([
+                  {
+                    id: `greeting-${res.chat.id}`,
+                    role: "assistant",
+                    content: PERSONAS[targetPersona].greeting,
+                  },
+                ]);
+              }
+            } catch (e) {
+              console.error("Error creating chat on switch:", e);
+            }
+          } else {
+            setActiveChatId(null);
+            setMessages([
+              {
+                id: `greeting-${targetPersona}`,
+                role: "assistant",
+                content: PERSONAS[targetPersona].greeting,
+              },
+            ]);
+          }
+        }
+      } finally {
+        isSwitchingRef.current = false;
       }
     },
-    [chats, loadMessagesForChat],
+    [activeChatId, chats, loadMessagesForChat, user],
   );
 
   // Create a new chat session via Server Action
