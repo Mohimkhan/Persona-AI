@@ -55,13 +55,14 @@ export function AuthModal({
       if (error) throw error;
     } catch (err: unknown) {
       console.error("Google sign in error:", err);
-      const msg = err instanceof Error ? err.message : "Failed to sign in with Google";
+      const msg =
+        err instanceof Error ? err.message : "Failed to sign in with Google";
       showToast({ message: msg, type: "error" });
       setLoading(false);
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       showToast({ message: "Please fill in all fields", type: "error" });
@@ -192,13 +193,15 @@ export function AuthModal({
               fill="#EA4335"
             />
           </svg>
-          <span className="text-xs sm:text-sm font-medium">Continue with Google</span>
+          <span className="text-xs sm:text-sm font-medium">
+            Continue with Google
+          </span>
         </Button>
 
         {/* Divider */}
         <div className="relative flex items-center justify-center">
           <div className="border-t border-border w-full" />
-          <span className="bg-card px-2 text-[11px] text-muted-foreground uppercase tracking-wider">
+          <span className="absolute bg-card px-2 text-[11px] text-muted-foreground uppercase tracking-wider">
             Or with email
           </span>
         </div>
@@ -222,7 +225,9 @@ export function AuthModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">Password</label>
+            <label className="text-xs font-medium text-foreground">
+              Password
+            </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
