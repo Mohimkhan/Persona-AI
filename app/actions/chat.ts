@@ -49,8 +49,9 @@ export async function markDeviceAsRegisteredAction() {
 /**
  * Checks if the current visitor is eligible for a guest session,
  * whether they have reached the 5-message preview limit, or are already registered.
+ * Checks both the HttpOnly cookie and the hardware device fingerprint.
  */
-export async function checkGuestEligibilityAction(): Promise<{
+export async function checkGuestEligibilityAction(deviceHash?: string): Promise<{
   eligibleForGuest: boolean;
   isRegisteredDevice: boolean;
   messageLimitReached?: boolean;
@@ -71,6 +72,41 @@ export async function checkGuestEligibilityAction(): Promise<{
         guestMessagesUsed: 0,
         remainingGuestMessages: 0,
       };
+    }
+
+    // Check device fingerprint against PostgreSQL
+    if (deviceHash) {
+      const admin = await createServerSupabaseAdminClient();
+      const { data: matchedUsers } = await admin
+        .from("users")
+        .select("id, email, raw_user_meta_data")
+        .filter("raw_user_meta_data->>device_hash", "eq", deviceHash);
+
+      if (matchedUsers && matchedUsers.length > 0) {
+        const hasRegisteredUser = matchedUsers.some((u) => u.email !== null);
+        if (hasRegisteredUser) {
+          return {
+            eligibleForGuest: false,
+            isRegisteredDevice: true,
+            messageLimitReached: true,
+            guestMessagesUsed: 0,
+            remainingGuestMessages: 0,
+            error:
+              "This device is already linked to an account. Please sign in to continue.",
+          };
+        }
+
+        // Already created a guest session on this device
+        return {
+          eligibleForGuest: false,
+          isRegisteredDevice: false,
+          messageLimitReached: true,
+          guestMessagesUsed: GUEST_MESSAGE_LIMIT,
+          remainingGuestMessages: 0,
+          error:
+            "A guest session has already been used on this device. Please create an account or sign in to continue.",
+        };
+      }
     }
 
     const supabase = await getSupabaseServerClient();
@@ -119,9 +155,9 @@ export async function checkGuestEligibilityAction(): Promise<{
 
 /**
  * Explicitly creates a guest session when requested by the user.
- * Rejected if the device is already marked as registered.
+ * Rejected if the device is marked as registered or has already used its guest allowance.
  */
-export async function createGuestAccountAction(): Promise<{
+export async function createGuestAccountAction(deviceHash?: string): Promise<{
   success: boolean;
   user?: unknown;
   error?: string;
@@ -138,8 +174,35 @@ export async function createGuestAccountAction(): Promise<{
       };
     }
 
+    // Check device fingerprint in DB to prevent duplicate guest creation even if cookies deleted
+    if (deviceHash) {
+      const admin = await createServerSupabaseAdminClient();
+      const { data: matchedUsers } = await admin
+        .from("users")
+        .select("id, email, raw_user_meta_data")
+        .filter("raw_user_meta_data->>device_hash", "eq", deviceHash);
+
+      if (matchedUsers && matchedUsers.length > 0) {
+        const hasRegistered = matchedUsers.some((u) => u.email !== null);
+        return {
+          success: false,
+          isRegisteredDevice: hasRegistered,
+          error: hasRegistered
+            ? "This device already has a registered account. Please sign in to continue."
+            : "A guest session has already been used on this device. Please create an account or sign in to continue.",
+        };
+      }
+    }
+
     const supabase = await getSupabaseServerClient();
-    const { data: anonData, error } = await supabase.auth.signInAnonymously();
+    const { data: anonData, error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: deviceHash
+          ? { device_hash: deviceHash, is_guest: true }
+          : { is_guest: true },
+      },
+    });
+
     if (error) {
       return { success: false, error: error.message };
     }
