@@ -2,7 +2,7 @@
 
 import { useEffect, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { FiX } from "react-icons/fi";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -70,7 +70,7 @@ export function ConfirmDialog({
           onClick={onClose}
           disabled={isLoading}
         >
-          <X className="h-4 w-4" />
+          <FiX className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </Button>
 

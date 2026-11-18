@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Sparkles, User, Loader2 } from "lucide-react";
+import { FiX, FiUser, FiLoader } from "react-icons/fi";
+import { RiSparklingLine } from "react-icons/ri";
 
 interface GuestPromptModalProps {
   isOpen: boolean;
@@ -73,14 +74,14 @@ export function GuestPromptModal({
           onClick={onClose}
           disabled={loadingGuest}
         >
-          <X className="h-4 w-4" />
+          <FiX className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </Button>
 
         {/* Modal Header */}
         <div className="space-y-3">
           <div className="inline-flex p-3 rounded-2xl bg-primary/10 text-primary">
-            <Sparkles className="w-5 h-5" />
+            <RiSparklingLine className="w-5 h-5" />
           </div>
 
           <div className="space-y-1.5">
@@ -108,12 +109,12 @@ export function GuestPromptModal({
           >
             {loadingGuest ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <FiLoader className="w-3.5 h-3.5 animate-spin" />
                 <span>Starting Session...</span>
               </>
             ) : (
               <>
-                <User className="w-3.5 h-3.5 text-muted-foreground" />
+                <FiUser className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Try as Guest</span>
               </>
             )}

@@ -7,18 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Plus,
-  Trash2,
-  Edit2,
-  Check,
-  MessageSquare,
-  Bot,
-  User as UserIcon,
-  X,
-  Sparkles,
-  LogIn,
-  LogOut,
-} from "lucide-react";
+  FiPlus,
+  FiTrash2,
+  FiEdit2,
+  FiCheck,
+  FiX,
+  FiLogIn,
+  FiLogOut,
+  FiUser,
+} from "react-icons/fi";
+import { RiRobot2Line, RiSparklingLine, RiMessage3Line } from "react-icons/ri";
 import { User } from "@supabase/supabase-js";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -156,7 +154,7 @@ export function ChatSidebar({
         }"? All messages in this conversation will be permanently removed.`}
         confirmText="Delete Chat"
         variant="destructive"
-        icon={<Trash2 className="w-5 h-5" />}
+        icon={<FiTrash2 className="w-5 h-5" />}
       />
 
       {/* Logout Confirmation Dialog */}
@@ -169,7 +167,7 @@ export function ChatSidebar({
         confirmText="Sign Out"
         cancelText="Cancel"
         variant="destructive"
-        icon={<LogOut className="w-5 h-5" />}
+        icon={<FiLogOut className="w-5 h-5" />}
       />
 
       {/* Sidebar Container */}
@@ -183,7 +181,7 @@ export function ChatSidebar({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <MessageSquare className="w-4 h-4" />
+                <RiMessage3Line className="w-4 h-4" />
               </div>
               <h2 className="font-semibold text-sm tracking-tight">Conversations</h2>
             </div>
@@ -193,7 +191,7 @@ export function ChatSidebar({
               className="h-8 w-8 md:hidden"
               onClick={onClose}
             >
-              <X className="h-4 w-4" />
+              <FiX className="h-4 w-4" />
             </Button>
           </div>
 
@@ -205,7 +203,7 @@ export function ChatSidebar({
             }}
             className="w-full justify-center gap-2 font-medium h-9 text-xs sm:text-sm"
           >
-            <Plus className="h-4 w-4" />
+            <FiPlus className="h-4 w-4" />
             <span>New Chat</span>
           </Button>
 
@@ -248,7 +246,7 @@ export function ChatSidebar({
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {filteredChats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center px-4 text-muted-foreground">
-              <Sparkles className="w-8 h-8 mb-2 opacity-40" />
+              <RiSparklingLine className="w-8 h-8 mb-2 opacity-40" />
               <p className="text-xs font-medium">No chats found</p>
               <p className="text-[11px] text-muted-foreground/80 mt-0.5">
                 Start a new conversation above!
@@ -310,7 +308,7 @@ export function ChatSidebar({
                           className="text-primary hover:text-primary/80 p-0.5"
                           title="Save title"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <FiCheck className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
@@ -333,7 +331,7 @@ export function ChatSidebar({
                         title="Rename Chat"
                         className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/10"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={(e) => {
@@ -343,7 +341,7 @@ export function ChatSidebar({
                         title="Delete Chat"
                         className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <FiTrash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
@@ -360,9 +358,9 @@ export function ChatSidebar({
               <Avatar className="w-7 h-7 shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
                   {isGuest ? (
-                    <Bot className="w-3.5 h-3.5" />
+                    <RiRobot2Line className="w-3.5 h-3.5" />
                   ) : (
-                    <UserIcon className="w-3.5 h-3.5" />
+                    <FiUser className="w-3.5 h-3.5" />
                   )}
                 </AvatarFallback>
               </Avatar>
@@ -389,7 +387,7 @@ export function ChatSidebar({
                 className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                 title="Sign Out"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <FiLogOut className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
@@ -402,7 +400,7 @@ export function ChatSidebar({
               onClick={() => setIsAuthModalOpen(true)}
               className="w-full text-xs h-8 gap-1.5 border-primary/20 hover:border-primary/50 text-foreground"
             >
-              <LogIn className="w-3.5 h-3.5 text-primary" />
+              <FiLogIn className="w-3.5 h-3.5 text-primary" />
               <span>Sign In / Save Chats</span>
             </Button>
           )}

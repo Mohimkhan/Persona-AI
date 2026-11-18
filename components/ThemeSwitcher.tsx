@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { FiMoon, FiSun } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 
 export function ThemeSwitcher() {
@@ -25,9 +25,9 @@ export function ThemeSwitcher() {
       className="w-10 h-10"
     >
       {theme === "dark" ? (
-        <Sun className="h-[1.2rem] w-[1.2rem] text-yellow-500" />
+        <FiSun className="h-[1.2rem] w-[1.2rem] text-yellow-500" />
       ) : (
-        <Moon className="h-[1.2rem] w-[1.2rem]" />
+        <FiMoon className="h-[1.2rem] w-[1.2rem]" />
       )}
       <span className="sr-only">Toggle theme</span>
     </Button>
