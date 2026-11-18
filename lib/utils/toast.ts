@@ -11,7 +11,7 @@ export const showToast = ({
   extraClasses?: string;
 }) => {
   return toast(message, {
-    className: cn("z-50 bg-black border border-primary-color", extraClasses),
+    className: cn("z-50 border border-border shadow-md", extraClasses),
     type: type,
   });
 };

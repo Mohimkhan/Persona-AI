@@ -4,19 +4,19 @@ import { useTheme } from "next-themes";
 import { ToastContainer, Bounce } from "react-toastify";
 
 const CustomToastContainer = () => {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   return (
     <ToastContainer
       position="bottom-right"
       limit={3}
       transition={Bounce}
-      theme={theme}
+      theme={resolvedTheme === "dark" ? "dark" : "light"}
       pauseOnHover
       pauseOnFocusLoss={false}
       newestOnTop={true}
       closeOnClick
-      autoClose={false}
+      autoClose={3000}
       style={{ zIndex: 1000 }}
     />
   );
