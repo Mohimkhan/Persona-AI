@@ -8,16 +8,16 @@ import { Input } from "@/components/ui/input";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Send,
-  ArrowLeft,
-  Bot,
-  User as UserIcon,
-  Copy,
-  Check,
-  PanelLeft,
-  ArrowDown,
-  Trash2,
-} from "lucide-react";
+  FiSend,
+  FiArrowLeft,
+  FiUser,
+  FiCopy,
+  FiCheck,
+  FiSidebar,
+  FiArrowDown,
+  FiTrash2,
+} from "react-icons/fi";
+import { RiRobot2Line } from "react-icons/ri";
 import { type YouTubeVideo } from "../actions/yt";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
@@ -27,11 +27,13 @@ import remarkGfm from "remark-gfm";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { GuestPromptModal } from "@/components/auth/GuestPromptModal";
+import { SendFailedModal } from "@/components/auth/SendFailedModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 import {
   checkGuestEligibilityAction,
   createGuestAccountAction,
 } from "@/app/actions/chat";
+import { getDeviceFingerprint } from "@/lib/utils/fingerprint";
 import { showToast } from "@/lib/utils/toast";
 import {
   useSupabaseChat,
@@ -65,9 +67,9 @@ const CodeBlock = ({
           className="flex items-center gap-1.5 hover:text-zinc-100 transition-colors py-1"
         >
           {isCopied ? (
-            <Check size={14} className="text-green-500" />
+            <FiCheck size={14} className="text-green-500" />
           ) : (
-            <Copy size={14} />
+            <FiCopy size={14} />
           )}
           {isCopied ? (
             <span className="text-green-500">Copied!</span>
@@ -102,6 +104,7 @@ function ChatComponent() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isGuestPromptOpen, setIsGuestPromptOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSendFailedModalOpen, setIsSendFailedModalOpen] = useState(false);
   const [pendingMessage, setPendingMessage] = useState("");
 
   const {
@@ -119,6 +122,7 @@ function ChatComponent() {
     handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
+    handleSendFirstGuestMessage,
     handleLogout,
     setActivePersona,
     refreshSession,
@@ -158,39 +162,24 @@ function ChatComponent() {
   };
 
   const handleContinueAsGuest = async () => {
+    if (!pendingMessage) return;
+
+    setIsGuestPromptOpen(false);
+    const textToSend = pendingMessage;
+
     try {
-      const res = await createGuestAccountAction();
-      if (!res.success) {
-        if (res.isRegisteredDevice) {
-          showToast({
-            message: res.error || "Please sign in to continue.",
-            type: "warning",
-          });
-          setIsGuestPromptOpen(false);
-          setIsAuthModalOpen(true);
-          return;
-        }
-        throw new Error(res.error || "Failed to create guest session");
-      }
+      const deviceHash = await getDeviceFingerprint();
+      const sendRes = await handleSendFirstGuestMessage(textToSend, deviceHash);
 
-      await refreshSession();
-      setIsGuestPromptOpen(false);
-
-      if (pendingMessage) {
-        const text = pendingMessage;
+      if (!sendRes.success) {
+        setIsSendFailedModalOpen(true);
+      } else {
         setPendingMessage("");
         setInput("");
-        const sendRes = await handleSendMessage(text);
-        if (sendRes?.limitReached) {
-          setIsAuthModalOpen(true);
-        }
       }
     } catch (err) {
-      console.error("Guest session error:", err);
-      showToast({
-        message: "Failed to initialize guest session",
-        type: "error",
-      });
+      console.error("Guest flow error:", err);
+      setIsSendFailedModalOpen(true);
     }
   };
 
@@ -216,11 +205,24 @@ function ChatComponent() {
 
     // Guard 1 & 2: If user has no active session, check eligibility and prompt
     if (!user) {
-      const eligibility = await checkGuestEligibilityAction();
+      const deviceHash = await getDeviceFingerprint();
+      const eligibility = await checkGuestEligibilityAction(deviceHash);
       if (eligibility.isRegisteredDevice) {
         showToast({
           message:
             "This device is already linked to an account. Please sign in to continue.",
+          type: "warning",
+        });
+        setPendingMessage(currentText);
+        setIsAuthModalOpen(true);
+        return;
+      }
+
+      if (!eligibility.eligibleForGuest) {
+        showToast({
+          message:
+            eligibility.error ||
+            "A guest session has already been used on this device. Please sign in.",
           type: "warning",
         });
         setPendingMessage(currentText);
@@ -254,6 +256,17 @@ function ChatComponent() {
         onContinueAsGuest={handleContinueAsGuest}
       />
 
+      {/* Account Creation Failed Modal */}
+      <SendFailedModal
+        isOpen={isSendFailedModalOpen}
+        onClose={() => setIsSendFailedModalOpen(false)}
+        onRetry={async () => {
+          setIsSendFailedModalOpen(false);
+          await handleContinueAsGuest();
+        }}
+        isLoading={isSending}
+      />
+
       {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -271,7 +284,7 @@ function ChatComponent() {
         description="Are you sure you want to clear all messages in this conversation? This action cannot be undone."
         confirmText="Clear Chat"
         variant="destructive"
-        icon={<Trash2 className="w-5 h-5" />}
+        icon={<FiTrash2 className="w-5 h-5" />}
       />
 
       {/* Left Chat Sidebar */}
@@ -317,12 +330,12 @@ function ChatComponent() {
               onClick={() => setIsSidebarOpen((prev) => !prev)}
               title="Toggle sidebar"
             >
-              <PanelLeft className="h-5 w-5" />
+              <FiSidebar className="h-5 w-5" />
             </Button>
 
             <Link href="/">
               <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                <ArrowLeft className="h-5 w-5" />
+                <FiArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
 
@@ -460,12 +473,12 @@ function ChatComponent() {
                           className="object-cover"
                         />
                         <AvatarFallback>
-                          <Bot className="h-5 w-5" />
+                          <RiRobot2Line className="h-5 w-5" />
                         </AvatarFallback>
                       </>
                     ) : (
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        <UserIcon className="h-5 w-5" />
+                        <FiUser className="h-5 w-5" />
                       </AvatarFallback>
                     )}
                   </Avatar>
@@ -582,7 +595,7 @@ function ChatComponent() {
                     className="object-cover"
                   />
                   <AvatarFallback>
-                    <Bot className="h-5 w-5" />
+                    <RiRobot2Line className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="rounded-2xl px-4 py-3 bg-muted text-foreground rounded-tl-xs flex items-center gap-1.5">
@@ -603,7 +616,7 @@ function ChatComponent() {
             className="fixed bottom-24 right-6 sm:right-10 z-30 p-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-105 active:scale-95 transition-all"
             title="Scroll to bottom"
           >
-            <ArrowDown className="h-4 w-4" />
+            <FiArrowDown className="h-4 w-4" />
           </button>
         )}
 
@@ -626,7 +639,7 @@ function ChatComponent() {
               className="rounded-full shrink-0 h-10 w-10"
               disabled={isSending || !input.trim()}
             >
-              <Send className="h-5 w-5" />
+              <FiSend className="h-5 w-5" />
               <span className="sr-only">Send</span>
             </Button>
           </form>

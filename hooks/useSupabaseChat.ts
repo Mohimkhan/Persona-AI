@@ -6,6 +6,7 @@ import { Chat, Message as DbMessage } from "@/types/database.types";
 import {
   fetchChatsAction,
   createChatAction,
+  createGuestAccountAction,
   deleteChatAction,
   fetchMessagesAction,
   insertMessageAction,
@@ -654,6 +655,112 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     [activeChat, activeChatId, activePersona, isSending, messages],
   );
 
+  // Send first guest message: calls AI model FIRST, only creates guest account when reply succeeds
+  const handleSendFirstGuestMessage = useCallback(
+    async (userText: string, deviceHash?: string) => {
+      if (!userText.trim() || isSending) return { success: false };
+
+      const tempId = `temp-${Date.now()}`;
+      const optimisticUserMsg: SerializedMessage = {
+        id: tempId,
+        role: "user",
+        content: userText.trim(),
+      };
+
+      const updatedMessages = [...messages, optimisticUserMsg];
+      setMessages(updatedMessages);
+      setIsSending(true);
+
+      try {
+        // 1. Call AI Chat API FIRST before touching database or creating guest user
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: updatedMessages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+            persona: activePersona,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw errorData || new Error("Failed to fetch response");
+        }
+
+        const data = await res.json();
+        const assistantText = data.text || "";
+        const assistantVideos = (data?.data as YouTubeVideo[]) || [];
+
+        // 2. AI model succeeded! NOW create the guest account
+        const guestRes = await createGuestAccountAction(deviceHash);
+        if (!guestRes.success) {
+          throw new Error(guestRes.error || "Failed to create guest account");
+        }
+
+        // 3. Resolve created user session on client
+        const {
+          data: { user: newUser },
+        } = await supabase.auth.getUser();
+        setUser(newUser);
+
+        // 4. Create the initial conversation in DB
+        const initialTitle =
+          userText.length > 32 ? userText.slice(0, 32) + "..." : userText;
+        const createRes = await createChatAction(activePersona, initialTitle);
+        if (!createRes.success || !createRes.chat) {
+          throw new Error(createRes.error || "Failed to create conversation");
+        }
+
+        const newChatId = createRes.chat.id;
+        setActiveChatId(newChatId);
+        setChats((prev) => [createRes.chat!, ...prev]);
+
+        // 5. Insert user message and assistant reply to DB
+        const insertUserRes = await insertMessageAction(
+          newChatId,
+          "user",
+          userText.trim(),
+        );
+        const insertAiRes = await insertMessageAction(
+          newChatId,
+          "assistant",
+          assistantText,
+          assistantVideos,
+        );
+
+        const realUserMsg = insertUserRes.message || optimisticUserMsg;
+        const realAiMsg = insertAiRes.message || {
+          id: `ai-${Date.now()}`,
+          role: "assistant" as const,
+          content: assistantText,
+          data: assistantVideos,
+        };
+
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== tempId),
+          realUserMsg,
+          realAiMsg,
+        ]);
+
+        return { success: true };
+      } catch (err: unknown) {
+        console.error("First guest message error:", err);
+        // Revert optimistic user message so screen is clean
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to send message",
+        };
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [activePersona, isSending, messages, supabase],
+  );
+
   // Sign out and redirect cleanly to home page
   const handleLogout = useCallback(async () => {
     try {
@@ -691,6 +798,7 @@ export function useSupabaseChat(initialPersona: PersonaType = "tech_bro") {
     handleRenameChat,
     handleClearCurrentChat,
     handleSendMessage,
+    handleSendFirstGuestMessage,
     handleLogout,
     setActivePersona,
     refreshSession,
