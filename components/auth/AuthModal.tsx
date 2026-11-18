@@ -14,9 +14,11 @@ import { FiX, FiLock, FiMail, FiLoader } from "react-icons/fi";
 import { RiSparklingLine } from "react-icons/ri";
 import { FcGoogle } from "react-icons/fc";
 import { User } from "@supabase/supabase-js";
-import {z} from "zod";
+import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { IoIosEyeOff } from "react-icons/io";
+import { IoMdEye } from "react-icons/io";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -27,8 +29,8 @@ interface AuthModalProps {
 
 const signInUpSchema = z.object({
   email: z.string().email(),
-  password: z.string()
-})
+  password: z.string(),
+});
 
 export function AuthModal({
   isOpen,
@@ -40,17 +42,22 @@ export function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const supabase = createClient();
   const isGuest = currentUser?.is_anonymous ?? true;
 
-  const {register, handleSubmit, formState: {errors}} = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     resolver: zodResolver(signInUpSchema),
     defaultValues: {
       email: "",
       password: "",
-    }
-  })
+    },
+  });
 
   if (!isOpen) return null;
 
@@ -233,7 +240,7 @@ export function AuthModal({
             <div className="relative">
               <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -242,6 +249,14 @@ export function AuthModal({
                 disabled={loading}
                 minLength={6}
               />
+              <div onClick={() => setShowPassword(!showPassword)}>
+                {!!password.trim().length &&
+                  (!showPassword ? (
+                    <IoIosEyeOff className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <IoMdEye className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  ))}
+              </div>
             </div>
           </div>
 
